@@ -557,6 +557,26 @@ const server = http.createServer(async (req, res) => {
       return serveFileWithRange(req, res, mediaFile);
     }
 
+    // 9b. GET /api/webflow/proxy?endpoint=/v2/... -> Proxy requests to Webflow Data API v2 to avoid browser CORS
+    if (req.method === 'GET' && pathname === '/api/webflow/proxy') {
+      const endpoint = parsedUrl.searchParams.get('endpoint') || '/v2/sites';
+      const token = (req.headers['x-webflow-token'] || '').trim();
+      if (!token) {
+        return sendJson(res, 400, { error: 'Missing Webflow API token' });
+      }
+      if (!endpoint.startsWith('/v2/')) {
+        return sendJson(res, 400, { error: 'Invalid Webflow v2 endpoint' });
+      }
+      const wfRes = await fetch(`https://api.webflow.com${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json'
+        }
+      });
+      const wfData = await wfRes.json().catch(() => ({}));
+      return sendJson(res, wfRes.status, wfData);
+    }
+
     // 10. Serve static frontend files from /public
     let staticFile = pathname === '/' ? '/index.html' : pathname;
     const resolvedStatic = path.resolve(PUBLIC_DIR, `.${staticFile}`);

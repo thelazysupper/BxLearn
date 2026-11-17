@@ -2666,13 +2666,23 @@ function bindEvents() {
   document.getElementById('btn-set-video-url').addEventListener('click', () => {
     const url = document.getElementById('video-url-input').value.trim();
     if (!url || !state.activeDemo) return;
-    state.activeDemo.videoUrl = url;
-    state.activeDemo.useSampleCanvasVideo = false;
-    setupEditorVideoSource();
-    if (state.activeDemo.steps.length === 0) addStepAtCurrentTime(50, 50, 'hotspot');
-    scheduleAutoSave();
-    showToast('Loaded video URL');
+    loadAssetUrlIntoActiveDemo(url);
+    document.getElementById('video-url-input').value = '';
   });
+
+  // Webflow Site Assets Browser Triggers
+  const browseWfBtn = document.getElementById('btn-browse-webflow-assets');
+  if (browseWfBtn) {
+    browseWfBtn.addEventListener('click', () => openWebflowAssetsModal('append'));
+  }
+  const sidebarWfBtn = document.getElementById('btn-sidebar-wf-assets');
+  if (sidebarWfBtn) {
+    sidebarWfBtn.addEventListener('click', () => openWebflowAssetsModal('append'));
+  }
+  const inspectorWfBtn = document.getElementById('btn-inspector-wf-assets');
+  if (inspectorWfBtn) {
+    inspectorWfBtn.addEventListener('click', () => openWebflowAssetsModal('replace-step'));
+  }
 
   document.getElementById('btn-video-url-modal').addEventListener('click', () => {
     if (!state.activeDemo) return;
@@ -3138,6 +3148,418 @@ function bindEvents() {
     const snippet = generateHubWebflowSnippet();
     downloadHtmlFile('bxlearn-walkthrough-hub.html', snippet, 'BxLearn Walkthrough Hub');
     showToast('Downloaded bxlearn-walkthrough-hub.html');
+  });
+
+  bindWebflowAssetsModalEvents();
+}
+
+// =========================================================
+// WEBFLOW SITE ASSETS BROWSER & SMART ASSET URL LOADER
+// =========================================================
+const WF_TOKEN_STORAGE_KEY = 'bxlearn_webflow_api_token_v1';
+const WF_SITE_ID_STORAGE_KEY = 'bxlearn_webflow_site_id_v1';
+
+const wfAssetsState = {
+  mode: 'append', // 'append' | 'replace-step'
+  sites: [],
+  folders: [],
+  assets: [],
+  selectedIds: new Set(),
+  searchQuery: '',
+  selectedFolderId: '__ALL__',
+  loading: false
+};
+
+function isImageAssetUrl(url = '', contentType = '') {
+  if (contentType && contentType.startsWith('image/')) return true;
+  const clean = String(url).split('?')[0].toLowerCase();
+  return /\.(png|jpe?g|webp|gif|svg|avif)$/.test(clean);
+}
+
+function extractAssetDisplayName(url = '', fallback = 'Webflow Asset') {
+  try {
+    const clean = decodeURIComponent(String(url).split('?')[0].split('/').pop() || '');
+    // Strip Webflow's 24-char hex asset prefix if present (e.g. "65f1a2b..._hero.png")
+    const stripped = clean.replace(/^[0-9a-f]{24}[_-]/i, '').replace(/\.[^.]+$/, '');
+    return stripped || fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function addScreenshotStepFromUrl(imageUrl, displayName = '') {
+  if (!state.activeDemo || !imageUrl) return null;
+  const stepNum = (state.activeDemo.steps?.length || 0) + 1;
+  const cleanName = displayName || extractAssetDisplayName(imageUrl, 'Click here');
+  const newStep = {
+    id: `step-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    type: 'hotspot',
+    backdrop: 'blur',
+    kicker: '',
+    timestamp: Number((stepNum - 1).toFixed(1)),
+    title: `Step ${stepNum}: ${cleanName}`,
+    body: 'Click the highlighted hotspot on this screen to continue.',
+    x: 50,
+    y: 50,
+    w: 16,
+    h: 8,
+    style: 'beacon',
+    placement: 'auto',
+    buttonText: 'Continue',
+    advanceOnHotspotClick: true,
+    ctaUrl: '',
+    imageUrl,
+    imageName: displayName || imageUrl.split('/').pop() || 'Webflow Asset'
+  };
+  state.activeDemo.steps.push(newStep);
+  return newStep;
+}
+
+function loadAssetUrlIntoActiveDemo(url, displayName = '') {
+  if (!url || !state.activeDemo) return;
+  if (isImageAssetUrl(url)) {
+    const created = addScreenshotStepFromUrl(url, displayName);
+    if (created) state.selectedStepId = created.id;
+    setupEditorVideoSource();
+    renderEditorStepsList();
+    renderInspectorPanel();
+    renderTimelineMarkers();
+    renderHotspotOverlay();
+    scheduleAutoSave();
+    refreshIcons();
+    showToast('Added Webflow image asset as step');
+  } else {
+    state.activeDemo.videoUrl = url;
+    state.activeDemo.useSampleCanvasVideo = false;
+    setupEditorVideoSource();
+    if (state.activeDemo.steps.length === 0) addStepAtCurrentTime(50, 50, 'hotspot');
+    scheduleAutoSave();
+    showToast('Loaded Webflow video asset');
+  }
+}
+
+async function webflowApiGet(endpoint, token) {
+  // 1. Try local server proxy first (avoids browser CORS when running node server.js)
+  try {
+    const proxyRes = await fetch(`/api/webflow/proxy?endpoint=${encodeURIComponent(endpoint)}`, {
+      headers: { 'X-Webflow-Token': token }
+    });
+    if (proxyRes.ok) {
+      return await proxyRes.json();
+    }
+    if (proxyRes.status !== 404) {
+      const errBody = await proxyRes.json().catch(() => ({}));
+      throw new Error(errBody.message || errBody.error || `Webflow API error (${proxyRes.status})`);
+    }
+  } catch (err) {
+    if (err.message && err.message.startsWith('Webflow API error')) throw err;
+  }
+
+  // 2. Direct Webflow v2 API call (when running on Webflow Cloud)
+  const directRes = await fetch(`https://api.webflow.com${endpoint}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json'
+    }
+  });
+  const data = await directRes.json().catch(() => ({}));
+  if (!directRes.ok) {
+    throw new Error(data.message || data.error || `Webflow API returned ${directRes.status}`);
+  }
+  return data;
+}
+
+function setWfAssetsStatus(msg, type = '') {
+  const el = document.getElementById('wf-assets-status');
+  if (!el) return;
+  el.innerHTML = msg;
+  el.classList.remove('connected', 'error');
+  if (type) el.classList.add(type);
+}
+
+async function openWebflowAssetsModal(mode = 'append') {
+  wfAssetsState.mode = mode;
+  wfAssetsState.selectedIds.clear();
+  const modal = document.getElementById('modal-webflow-assets');
+  if (!modal) return;
+
+  const savedToken = localStorage.getItem(WF_TOKEN_STORAGE_KEY) || '';
+  const savedSiteId = localStorage.getItem(WF_SITE_ID_STORAGE_KEY) || '';
+  const tokenInput = document.getElementById('wf-assets-token-input');
+  const siteIdInput = document.getElementById('wf-assets-site-id-input');
+
+  if (tokenInput) tokenInput.value = savedToken;
+  if (siteIdInput) siteIdInput.value = savedSiteId;
+
+  modal.classList.remove('hidden');
+  updateWfSelectedCountUI();
+  refreshIcons(modal);
+
+  if (savedToken && (savedSiteId || wfAssetsState.assets.length === 0)) {
+    await connectWebflowAssetsApi();
+  } else {
+    renderWebflowAssetsGrid();
+  }
+}
+
+async function connectWebflowAssetsApi() {
+  const tokenInput = document.getElementById('wf-assets-token-input');
+  const siteIdInput = document.getElementById('wf-assets-site-id-input');
+  const siteSelect = document.getElementById('wf-assets-site-select');
+  const token = (tokenInput?.value || '').trim();
+  let siteId = (siteIdInput?.value || '').trim();
+
+  if (!token) {
+    setWfAssetsStatus('Please paste your Webflow Site API Token first.', 'error');
+    return;
+  }
+
+  try {
+    localStorage.setItem(WF_TOKEN_STORAGE_KEY, token);
+  } catch (e) {}
+
+  setWfAssetsStatus('Connecting to Webflow API...', '');
+
+  try {
+    // Auto-discover sites if possible
+    try {
+      const sitesData = await webflowApiGet('/v2/sites', token);
+      if (sitesData && Array.isArray(sitesData.sites) && sitesData.sites.length > 0) {
+        wfAssetsState.sites = sitesData.sites;
+        if (siteSelect) {
+          siteSelect.innerHTML = '';
+          sitesData.sites.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = `${s.displayName || s.shortName || s.id}`;
+            siteSelect.appendChild(opt);
+          });
+          siteSelect.classList.remove('hidden');
+          if (siteIdInput) siteIdInput.classList.add('hidden');
+          if (siteId && sitesData.sites.some(s => s.id === siteId)) {
+            siteSelect.value = siteId;
+          } else {
+            siteId = sitesData.sites[0].id;
+            siteSelect.value = siteId;
+          }
+        }
+      }
+    } catch (siteErr) {
+      // Token may only have assets:read without sites:read — fall back to manual siteId input
+    }
+
+    if (!siteId) {
+      setWfAssetsStatus('Token connected! Please enter your 24-character Webflow Site ID (or enable <code>sites:read</code> scope on your token).', 'error');
+      if (siteIdInput) siteIdInput.classList.remove('hidden');
+      return;
+    }
+
+    try {
+      localStorage.setItem(WF_SITE_ID_STORAGE_KEY, siteId);
+    } catch (e) {}
+
+    await loadWebflowSiteAssets(siteId, token);
+  } catch (err) {
+    setWfAssetsStatus(`Connection failed: ${escapeHtml(err.message || 'Check token & scopes')}`, 'error');
+  }
+}
+
+async function loadWebflowSiteAssets(siteId, token) {
+  setWfAssetsStatus('Loading assets from Webflow...', '');
+  const [assetsRes, foldersRes] = await Promise.all([
+    webflowApiGet(`/v2/sites/${encodeURIComponent(siteId)}/assets`, token),
+    webflowApiGet(`/v2/sites/${encodeURIComponent(siteId)}/asset_folders`, token).catch(() => ({ assetFolders: [] }))
+  ]);
+
+  wfAssetsState.assets = Array.isArray(assetsRes.assets) ? assetsRes.assets : [];
+  wfAssetsState.folders = Array.isArray(foldersRes.assetFolders) ? foldersRes.assetFolders : [];
+
+  const folderSelect = document.getElementById('wf-assets-folder-select');
+  if (folderSelect) {
+    folderSelect.innerHTML = `<option value="__ALL__">All Asset Folders (${wfAssetsState.assets.length})</option>`;
+    wfAssetsState.folders.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.id;
+      opt.textContent = f.displayName || f.id;
+      folderSelect.appendChild(opt);
+    });
+  }
+
+  setWfAssetsStatus(`Connected — loaded ${wfAssetsState.assets.length} asset(s) from Webflow.`, 'connected');
+  renderWebflowAssetsGrid();
+}
+
+function getWebflowAssetUrl(asset) {
+  if (!asset) return '';
+  if (asset.hostedUrl) return asset.hostedUrl;
+  if (Array.isArray(asset.variants) && asset.variants.length > 0 && asset.variants[0].hostedUrl) {
+    return asset.variants[0].hostedUrl;
+  }
+  return '';
+}
+
+function renderWebflowAssetsGrid() {
+  const grid = document.getElementById('wf-assets-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const q = wfAssetsState.searchQuery.trim().toLowerCase();
+  const folderFilter = wfAssetsState.selectedFolderId;
+
+  const filtered = wfAssetsState.assets.filter(a => {
+    const url = getWebflowAssetUrl(a);
+    if (!url) return false;
+    if (folderFilter !== '__ALL__' && a.folderId !== folderFilter) return false;
+    if (q) {
+      const name = `${a.displayName || ''} ${a.originalFileName || ''}`.toLowerCase();
+      if (!name.includes(q)) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div class="wf-assets-empty">
+        <i data-lucide="image"></i>
+        <p>${wfAssetsState.assets.length === 0
+          ? 'Connect your Webflow API Token above to browse your site assets.'
+          : 'No matching assets in this folder.'}</p>
+      </div>
+    `;
+    refreshIcons(grid);
+    return;
+  }
+
+  filtered.forEach(asset => {
+    const url = getWebflowAssetUrl(asset);
+    const name = asset.displayName || asset.originalFileName || 'Untitled asset';
+    const isImg = isImageAssetUrl(url, asset.contentType || '');
+    const ext = (name.split('.').pop() || (isImg ? 'IMG' : 'VIDEO')).slice(0, 5);
+    const isSelected = wfAssetsState.selectedIds.has(asset.id);
+
+    const card = document.createElement('div');
+    card.className = `wf-asset-card ${isSelected ? 'selected' : ''}`;
+    card.innerHTML = `
+      <div class="wf-asset-thumb">
+        ${isImg
+          ? `<img src="${escapeHtml(url)}" alt="${escapeHtml(name)}" loading="lazy" />`
+          : `<video src="${escapeHtml(url)}" muted preload="metadata"></video>`}
+        <span class="wf-asset-check">✓</span>
+        <span class="wf-asset-badge">${escapeHtml(ext)}</span>
+      </div>
+      <div class="wf-asset-meta" title="${escapeHtml(name)}">${escapeHtml(name)}</div>
+    `;
+
+    card.addEventListener('click', () => {
+      if (wfAssetsState.mode === 'replace-step') {
+        wfAssetsState.selectedIds.clear();
+        wfAssetsState.selectedIds.add(asset.id);
+      } else {
+        if (wfAssetsState.selectedIds.has(asset.id)) {
+          wfAssetsState.selectedIds.delete(asset.id);
+        } else {
+          wfAssetsState.selectedIds.add(asset.id);
+        }
+      }
+      updateWfSelectedCountUI();
+      renderWebflowAssetsGrid();
+    });
+
+    card.addEventListener('dblclick', () => {
+      wfAssetsState.selectedIds.clear();
+      wfAssetsState.selectedIds.add(asset.id);
+      insertSelectedWebflowAssets();
+    });
+
+    grid.appendChild(card);
+  });
+}
+
+function updateWfSelectedCountUI() {
+  const count = wfAssetsState.selectedIds.size;
+  const label = document.getElementById('wf-assets-selected-count');
+  const btn = document.getElementById('btn-wf-assets-insert');
+  if (label) label.textContent = `${count} asset${count === 1 ? '' : 's'} selected`;
+  if (btn) btn.disabled = count === 0;
+}
+
+async function insertSelectedWebflowAssets() {
+  if (!state.activeDemo || wfAssetsState.selectedIds.size === 0) return;
+  const chosen = wfAssetsState.assets.filter(a => wfAssetsState.selectedIds.has(a.id));
+  if (chosen.length === 0) return;
+
+  if (wfAssetsState.mode === 'replace-step') {
+    const asset = chosen[0];
+    const url = getWebflowAssetUrl(asset);
+    const name = asset.displayName || asset.originalFileName || 'Webflow Asset';
+    const step = getSelectedStep();
+    if (step && url) {
+      step.imageUrl = url;
+      step.imageName = name;
+      setupEditorVideoSource();
+      renderEditorStepsList();
+      renderInspectorPanel();
+      renderTimelineMarkers();
+      renderHotspotOverlay();
+      scheduleAutoSave();
+      showToast(`Attached "${name}" from Webflow Assets`);
+    }
+  } else {
+    let firstCreatedId = null;
+    for (const asset of chosen) {
+      const url = getWebflowAssetUrl(asset);
+      const name = asset.displayName || asset.originalFileName || 'Webflow Asset';
+      if (!url) continue;
+      if (isImageAssetUrl(url, asset.contentType || '')) {
+        const created = addScreenshotStepFromUrl(url, name.replace(/\.[^.]+$/, ''));
+        if (created && !firstCreatedId) firstCreatedId = created.id;
+      } else {
+        state.activeDemo.videoUrl = url;
+        state.activeDemo.useSampleCanvasVideo = false;
+      }
+    }
+    if (firstCreatedId) state.selectedStepId = firstCreatedId;
+    setupEditorVideoSource();
+    renderEditorStepsList();
+    renderInspectorPanel();
+    renderTimelineMarkers();
+    renderHotspotOverlay();
+    await apiUpdateDemo(state.activeDemo);
+    refreshIcons();
+    showToast(`Added ${chosen.length} Webflow asset${chosen.length === 1 ? '' : 's'}`);
+  }
+
+  document.getElementById('modal-webflow-assets').classList.add('hidden');
+}
+
+function bindWebflowAssetsModalEvents() {
+  const closeModal = () => {
+    document.getElementById('modal-webflow-assets')?.classList.add('hidden');
+  };
+  document.getElementById('btn-close-wf-assets-modal')?.addEventListener('click', closeModal);
+  document.getElementById('btn-cancel-wf-assets')?.addEventListener('click', closeModal);
+  document.getElementById('btn-wf-assets-connect')?.addEventListener('click', () => connectWebflowAssetsApi());
+  document.getElementById('btn-wf-assets-insert')?.addEventListener('click', () => insertSelectedWebflowAssets());
+
+  document.getElementById('wf-assets-site-select')?.addEventListener('change', async e => {
+    const siteId = e.target.value;
+    const token = (document.getElementById('wf-assets-token-input')?.value || '').trim();
+    if (siteId && token) {
+      try {
+        localStorage.setItem(WF_SITE_ID_STORAGE_KEY, siteId);
+      } catch (err) {}
+      await loadWebflowSiteAssets(siteId, token);
+    }
+  });
+
+  document.getElementById('wf-assets-search')?.addEventListener('input', e => {
+    wfAssetsState.searchQuery = e.target.value;
+    renderWebflowAssetsGrid();
+  });
+
+  document.getElementById('wf-assets-folder-select')?.addEventListener('change', e => {
+    wfAssetsState.selectedFolderId = e.target.value;
+    renderWebflowAssetsGrid();
   });
 }
 

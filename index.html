@@ -150,6 +150,9 @@
         <div class="panel-header">
           <h2>Steps</h2>
           <div class="panel-header-actions">
+            <button type="button" id="btn-sidebar-wf-assets" class="icon-btn" title="Browse Webflow Assets">
+              <i data-lucide="folder-search"></i>
+            </button>
             <label for="screenshot-steps-input" class="icon-btn" title="Add Screenshot Step(s)">
               <i data-lucide="image-plus"></i>
             </label>
@@ -194,13 +197,17 @@
                 <span>Upload Screenshots</span>
               </label>
               <input id="screenshots-empty-input" type="file" accept="image/png,image/jpeg,image/webp,image/*" multiple class="hidden" />
+              <button type="button" id="btn-browse-webflow-assets" class="btn btn-sm btn-outline" title="Pick images or videos directly from Webflow Assets">
+                <i data-lucide="folder-search"></i>
+                <span>Webflow Assets</span>
+              </button>
               <button type="button" id="btn-use-sample-video" class="btn btn-sm btn-outline">
                 <i data-lucide="sparkles"></i>
                 <span>Sample</span>
               </button>
             </div>
             <div class="url-input-row">
-              <input id="video-url-input" type="url" placeholder="https://cdn.prod.website-files.com/.../demo.mp4" />
+              <input id="video-url-input" type="url" placeholder="https://cdn.prod.website-files.com/... (Video or Image URL)" />
               <button type="button" id="btn-set-video-url" class="btn btn-sm btn-secondary">Load</button>
             </div>
           </div>
@@ -339,6 +346,9 @@
                   <span id="step-screenshot-btn-label">Upload Screenshot</span>
                 </label>
                 <input id="step-screenshot-input" type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" />
+                <button type="button" id="btn-inspector-wf-assets" class="icon-btn" title="Pick from Webflow Assets">
+                  <i data-lucide="folder-search"></i>
+                </button>
                 <button type="button" id="btn-snap-video-frame" class="icon-btn" title="Snap current video frame as screenshot">
                   <i data-lucide="camera"></i>
                 </button>
@@ -517,6 +527,83 @@
               </button>
             </div>
             <textarea id="wf-code-output" class="code-textarea" readonly spellcheck="false"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: WEBFLOW ASSETS BROWSER -->
+    <div id="modal-webflow-assets" class="modal-backdrop hidden">
+      <div class="modal-card modal-lg wf-assets-modal">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon">
+              <i data-lucide="folder-search"></i>
+            </div>
+            <div>
+              <h2>Webflow Site Assets</h2>
+              <p>Connect your Webflow Site API Token to browse and insert screenshots or videos from Webflow Assets.</p>
+            </div>
+          </div>
+          <button type="button" id="btn-close-wf-assets-modal" class="icon-btn">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Webflow API Connection Bar -->
+          <div class="wf-assets-connect-box">
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="wf-assets-token-input">Webflow API Token (assets:read)</label>
+                <input id="wf-assets-token-input" type="password" placeholder="Paste token from Site Settings → API Access..." />
+              </div>
+              <div class="form-group">
+                <label for="wf-assets-site-id-input">Site (Auto-detected or Site ID)</label>
+                <div class="input-with-btn">
+                  <select id="wf-assets-site-select" class="hidden"></select>
+                  <input id="wf-assets-site-id-input" type="text" placeholder="Auto-detects on Connect (or paste Site ID)" />
+                  <button type="button" id="btn-wf-assets-connect" class="btn btn-xs btn-primary">
+                    <i data-lucide="refresh-cw"></i>
+                    <span>Connect</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div id="wf-assets-status" class="wf-assets-status">
+              Generate a Site API Token in Webflow: <strong>Site Settings → Apps &amp; Integrations → API Access</strong> (enable <code>assets:read</code> and <code>sites:read</code>).
+            </div>
+          </div>
+
+          <!-- Filter & Search Row -->
+          <div class="wf-assets-toolbar">
+            <div class="search-box" style="flex:1; width:auto;">
+              <i data-lucide="search"></i>
+              <input id="wf-assets-search" type="text" placeholder="Filter Webflow assets by filename..." />
+            </div>
+            <select id="wf-assets-folder-select" class="wf-folder-filter">
+              <option value="__ALL__">All Asset Folders</option>
+            </select>
+          </div>
+
+          <!-- Assets Thumbnail Grid -->
+          <div id="wf-assets-grid" class="wf-assets-grid">
+            <div class="wf-assets-empty">
+              <i data-lucide="cloud"></i>
+              <p>Enter your Webflow API Token above and click <strong>Connect</strong> to load your site's assets.</p>
+            </div>
+          </div>
+
+          <!-- Footer Actions -->
+          <div class="wf-assets-footer">
+            <span id="wf-assets-selected-count" class="wf-selected-label">0 assets selected</span>
+            <div style="display:flex; gap:8px;">
+              <button type="button" id="btn-cancel-wf-assets" class="btn btn-sm btn-ghost">Cancel</button>
+              <button type="button" id="btn-wf-assets-insert" class="btn btn-sm btn-primary" disabled>
+                <i data-lucide="check"></i>
+                <span>Add Selected to Walkthrough</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
