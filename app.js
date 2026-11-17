@@ -3167,11 +3167,79 @@ function refreshIcons(root = document) {
   }
 }
 
+// =========================================================
+// STUDIO AUTHENTICATION GATE (App only, never in embeds)
+// =========================================================
+const AUTH_STORAGE_KEY = 'bxlearn_auth_session_v1';
+const AUTH_USER = 'marcus.saltvik@bxsoftware.no';
+const AUTH_PASS = 'SvenToreBowling123@';
+
+function isStudioAuthenticated() {
+  try {
+    return localStorage.getItem(AUTH_STORAGE_KEY) === 'authenticated';
+  } catch (e) {
+    return false;
+  }
+}
+
+function updateAuthGateUI() {
+  const loginScreen = document.getElementById('auth-login-screen');
+  if (!loginScreen) return;
+  const authed = isStudioAuthenticated();
+  loginScreen.classList.toggle('hidden', authed);
+  if (!authed) {
+    mediaPause();
+    setTimeout(() => {
+      const userInp = document.getElementById('login-username');
+      if (userInp) userInp.focus();
+    }, 40);
+  }
+  refreshIcons(loginScreen);
+}
+
+function bindAuthEvents() {
+  const loginForm = document.getElementById('auth-login-form');
+  const errorEl = document.getElementById('login-error');
+  const logoutBtn = document.getElementById('btn-logout');
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const userVal = (document.getElementById('login-username')?.value || '').trim().toLowerCase();
+      const passVal = document.getElementById('login-password')?.value || '';
+
+      if (userVal === AUTH_USER && passVal === AUTH_PASS) {
+        try {
+          localStorage.setItem(AUTH_STORAGE_KEY, 'authenticated');
+        } catch (err) {}
+        if (errorEl) errorEl.classList.add('hidden');
+        document.getElementById('login-password').value = '';
+        updateAuthGateUI();
+        showToast('Signed in to BxLearn');
+      } else {
+        if (errorEl) errorEl.classList.remove('hidden');
+      }
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      try {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+      } catch (err) {}
+      updateAuthGateUI();
+      showToast('Signed out');
+    });
+  }
+}
+
 // Boot application
 (async function init() {
+  bindAuthEvents();
+  updateAuthGateUI();
   bindEvents();
 
-  const fallback = loadLocalFallbackWorkspace();
+  const fallback = await loadLocalFallbackWorkspace();
   state.folders = fallback.folders || [];
   state.demos = fallback.demos || [];
   renderLibraryView();
