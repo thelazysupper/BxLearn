@@ -577,6 +577,11 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, wfRes.status, wfData);
     }
 
+    // Never return SPA index.html for unmatched /api/* routes
+    if (pathname.startsWith('/api/')) {
+      return sendJson(res, 404, { error: `API route not found: ${pathname}` });
+    }
+
     // 10. Serve static frontend files from /public
     let staticFile = pathname === '/' ? '/index.html' : pathname;
     const resolvedStatic = path.resolve(PUBLIC_DIR, `.${staticFile}`);

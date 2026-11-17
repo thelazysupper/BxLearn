@@ -3239,26 +3239,26 @@ function loadAssetUrlIntoActiveDemo(url, displayName = '') {
 }
 
 async function webflowApiGet(endpoint, token) {
-  let lastError = null;
-
   // 1. Try local server proxy first (when running node server.js locally)
   try {
     const proxyRes = await fetch(`/api/webflow/proxy?endpoint=${encodeURIComponent(endpoint)}`, {
       headers: { 'X-Webflow-Token': token }
     });
-    if (proxyRes.ok) {
-      return await proxyRes.json();
-    }
-    if (proxyRes.status !== 404 && proxyRes.status !== 502) {
-      const errBody = await proxyRes.json().catch(() => ({}));
-      throw new Error(errBody.message || errBody.error || `Webflow API error (${proxyRes.status})`);
+    const contentType = proxyRes.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const body = await proxyRes.json().catch(() => ({}));
+      if (proxyRes.ok) {
+        return body;
+      }
+      if (proxyRes.status !== 404) {
+        throw new Error(body.message || body.error || `Webflow API error (${proxyRes.status})`);
+      }
     }
   } catch (err) {
-    if (err.message && err.message.startsWith('Webflow API error')) throw err;
-    lastError = err;
+    if (err.message && err.message.startsWith('Webflow API')) throw err;
   }
 
-  // 2. Try CORS proxy relay (needed when running as a static app on Webflow Cloud because api.webflow.com blocks browser CORS)
+  // 2. Try CORS proxy relay (for static deployments where /api/webflow/proxy is not running)
   const targetUrl = `https://api.webflow.com${endpoint}`;
   const corsProxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
   try {
@@ -3268,28 +3268,19 @@ async function webflowApiGet(endpoint, token) {
         Accept: 'application/json'
       }
     });
-    const corsData = await corsRes.json().catch(() => ({}));
-    if (!corsRes.ok) {
+    const corsContentType = corsRes.headers.get('content-type') || '';
+    if (corsContentType.includes('application/json')) {
+      const corsData = await corsRes.json().catch(() => ({}));
+      if (corsRes.ok) return corsData;
       throw new Error(corsData.message || corsData.error || `Webflow API returned ${corsRes.status}`);
     }
-    return corsData;
   } catch (err) {
     if (err.message && err.message.includes('Webflow API')) throw err;
-    lastError = err;
   }
 
-  // 3. Final fallback: direct Webflow API call
-  const directRes = await fetch(targetUrl, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/json'
-    }
-  });
-  const data = await directRes.json().catch(() => ({}));
-  if (!directRes.ok) {
-    throw new Error(data.message || data.error || (lastError && lastError.message) || `Webflow API returned ${directRes.status}`);
-  }
-  return data;
+  throw new Error(
+    'Webflow API blocks direct browser requests (CORS). Run "npm start" locally on port 3000 to use the built-in server proxy, or paste Webflow CDN asset URLs directly in the Load box.'
+  );
 }
 
 function setWfAssetsStatus(msg, type = '') {
@@ -3344,7 +3335,16 @@ async function connectWebflowAssetsApi() {
   setWfAssetsStatus('Connecting to Webflow API...', '');
 
   try {
-    // Auto-discover sites if possible
+    // If Site ID is already provided by the user, load assets directly first
+    if (siteId) {
+      try {
+        localStorage.setItem(WF_SITE_ID_STORAGE_KEY, siteId);
+      } catch (e) {}
+      await loadWebflowSiteAssets(siteId, token);
+      return;
+    }
+
+    // Otherwise auto-discover sites via /v2/sites
     try {
       const sitesData = await webflowApiGet('/v2/sites', token);
       if (sitesData && Array.isArray(sitesData.sites) && sitesData.sites.length > 0) {
@@ -3359,12 +3359,8 @@ async function connectWebflowAssetsApi() {
           });
           siteSelect.classList.remove('hidden');
           if (siteIdInput) siteIdInput.classList.add('hidden');
-          if (siteId && sitesData.sites.some(s => s.id === siteId)) {
-            siteSelect.value = siteId;
-          } else {
-            siteId = sitesData.sites[0].id;
-            siteSelect.value = siteId;
-          }
+          siteId = sitesData.sites[0].id;
+          siteSelect.value = siteId;
         }
       }
     } catch (siteErr) {
