@@ -103,7 +103,7 @@ function syncViewportSize() {
 // =========================================================
 // API & STORAGE LAYER (Node Filesystem + Static Fallback)
 // =========================================================
-const LOCAL_STORAGE_KEY = 'bxlearn_workspace_v2';
+const LOCAL_STORAGE_KEY = 'bxlearn_workspace_v3';
 
 function getDefaultWorkspace() {
   return {
@@ -210,7 +210,7 @@ function getDefaultWorkspace() {
   };
 }
 
-function loadLocalFallbackWorkspace() {
+async function loadLocalFallbackWorkspace() {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
@@ -220,6 +220,20 @@ function loadLocalFallbackWorkspace() {
       }
     }
   } catch (e) {}
+
+  try {
+    const staticRes = await fetch('./workspace-static.json', { cache: 'no-store' });
+    if (staticRes.ok) {
+      const staticData = await staticRes.json();
+      if (staticData && Array.isArray(staticData.folders) && Array.isArray(staticData.demos)) {
+        try {
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(staticData));
+        } catch (e) {}
+        return staticData;
+      }
+    }
+  } catch (e) {}
+
   const initial = getDefaultWorkspace();
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(initial));
