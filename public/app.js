@@ -3239,7 +3239,9 @@ function loadAssetUrlIntoActiveDemo(url, displayName = '') {
 }
 
 async function webflowApiGet(endpoint, token) {
-  // 1. Try local server proxy first (avoids browser CORS when running node server.js)
+  let lastError = null;
+
+  // 1. Try local server proxy first (when running node server.js locally)
   try {
     const proxyRes = await fetch(`/api/webflow/proxy?endpoint=${encodeURIComponent(endpoint)}`, {
       headers: { 'X-Webflow-Token': token }
@@ -3247,16 +3249,37 @@ async function webflowApiGet(endpoint, token) {
     if (proxyRes.ok) {
       return await proxyRes.json();
     }
-    if (proxyRes.status !== 404) {
+    if (proxyRes.status !== 404 && proxyRes.status !== 502) {
       const errBody = await proxyRes.json().catch(() => ({}));
       throw new Error(errBody.message || errBody.error || `Webflow API error (${proxyRes.status})`);
     }
   } catch (err) {
     if (err.message && err.message.startsWith('Webflow API error')) throw err;
+    lastError = err;
   }
 
-  // 2. Direct Webflow v2 API call (when running on Webflow Cloud)
-  const directRes = await fetch(`https://api.webflow.com${endpoint}`, {
+  // 2. Try CORS proxy relay (needed when running as a static app on Webflow Cloud because api.webflow.com blocks browser CORS)
+  const targetUrl = `https://api.webflow.com${endpoint}`;
+  const corsProxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
+  try {
+    const corsRes = await fetch(corsProxyUrl, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json'
+      }
+    });
+    const corsData = await corsRes.json().catch(() => ({}));
+    if (!corsRes.ok) {
+      throw new Error(corsData.message || corsData.error || `Webflow API returned ${corsRes.status}`);
+    }
+    return corsData;
+  } catch (err) {
+    if (err.message && err.message.includes('Webflow API')) throw err;
+    lastError = err;
+  }
+
+  // 3. Final fallback: direct Webflow API call
+  const directRes = await fetch(targetUrl, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json'
@@ -3264,7 +3287,7 @@ async function webflowApiGet(endpoint, token) {
   });
   const data = await directRes.json().catch(() => ({}));
   if (!directRes.ok) {
-    throw new Error(data.message || data.error || `Webflow API returned ${directRes.status}`);
+    throw new Error(data.message || data.error || (lastError && lastError.message) || `Webflow API returned ${directRes.status}`);
   }
   return data;
 }
