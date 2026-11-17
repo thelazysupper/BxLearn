@@ -103,7 +103,25 @@ function syncViewportSize() {
 // =========================================================
 // API & STORAGE LAYER (Node Filesystem + Static Fallback)
 // =========================================================
-const LOCAL_STORAGE_KEY = 'bxlearn_workspace_v3';
+const LOCAL_STORAGE_KEY = 'bxlearn_workspace_v4';
+
+function getAppBasePath() {
+  if (typeof window !== 'undefined' && typeof window.__BXLEARN_BASE__ === 'string') {
+    return window.__BXLEARN_BASE__.replace(/\/$/, '');
+  }
+  const p = (typeof window !== 'undefined' ? window.location.pathname : '') || '';
+  const cleaned = p.replace(/\/index\.html$/, '').replace(/\/$/, '');
+  return cleaned === '/' ? '' : cleaned;
+}
+
+function normalizeStaticMediaUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+  const base = getAppBasePath();
+  if (url.startsWith('./media/')) {
+    return `${base}/media/${url.slice('./media/'.length)}`;
+  }
+  return url;
+}
 
 function getDefaultWorkspace() {
   return {
@@ -222,10 +240,18 @@ async function loadLocalFallbackWorkspace() {
   } catch (e) {}
 
   try {
-    const staticRes = await fetch('./workspace-static.json', { cache: 'no-store' });
+    const base = getAppBasePath();
+    const staticRes = await fetch(`${base}/workspace-static.json`, { cache: 'no-store' });
     if (staticRes.ok) {
       const staticData = await staticRes.json();
       if (staticData && Array.isArray(staticData.folders) && Array.isArray(staticData.demos)) {
+        staticData.demos = staticData.demos.map(d => ({
+          ...d,
+          videoUrl: normalizeStaticMediaUrl(d.videoUrl),
+          steps: Array.isArray(d.steps)
+            ? d.steps.map(s => ({ ...s, imageUrl: normalizeStaticMediaUrl(s.imageUrl) }))
+            : []
+        }));
         try {
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(staticData));
         } catch (e) {}
@@ -3239,23 +3265,31 @@ function loadAssetUrlIntoActiveDemo(url, displayName = '') {
 }
 
 async function webflowApiGet(endpoint, token) {
-  // 1. Try local server proxy first (when running node server.js locally)
-  try {
-    const proxyRes = await fetch(`/api/webflow/proxy?endpoint=${encodeURIComponent(endpoint)}`, {
-      headers: { 'X-Webflow-Token': token }
-    });
-    const contentType = proxyRes.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      const body = await proxyRes.json().catch(() => ({}));
-      if (proxyRes.ok) {
-        return body;
+  const base = getAppBasePath();
+  const candidateUrls = [
+    `${base}/api/webflow/proxy?endpoint=${encodeURIComponent(endpoint)}`,
+    `/api/webflow/proxy?endpoint=${encodeURIComponent(endpoint)}`
+  ];
+
+  // 1. Try Astro Edge / local Node server proxy first
+  for (const proxyUrl of candidateUrls) {
+    try {
+      const proxyRes = await fetch(proxyUrl, {
+        headers: { 'X-Webflow-Token': token }
+      });
+      const contentType = proxyRes.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const body = await proxyRes.json().catch(() => ({}));
+        if (proxyRes.ok) {
+          return body;
+        }
+        if (proxyRes.status !== 404) {
+          throw new Error(body.message || body.error || `Webflow API error (${proxyRes.status})`);
+        }
       }
-      if (proxyRes.status !== 404) {
-        throw new Error(body.message || body.error || `Webflow API error (${proxyRes.status})`);
-      }
+    } catch (err) {
+      if (err.message && err.message.startsWith('Webflow API')) throw err;
     }
-  } catch (err) {
-    if (err.message && err.message.startsWith('Webflow API')) throw err;
   }
 
   // 2. Try CORS proxy relay (for static deployments where /api/webflow/proxy is not running)

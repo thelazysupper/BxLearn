@@ -1,3 +1,6 @@
+---
+const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+---
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,8 +12,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@500;600;700&family=Google+Sans:wght@400;500;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
   <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="stylesheet" href="styles.css" />
+  <script is:inline src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href={`${base}/styles.css`} />
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -674,6 +677,9 @@
     <div id="toast-container" class="toast-container"></div>
   </div>
 
-  <script src="app.js"></script>
+  <script is:inline define:vars={{ base }}>
+    window.__BXLEARN_BASE__ = base;
+  </script>
+  <script is:inline src={`${base}/app.js`}></script>
 </body>
 </html>

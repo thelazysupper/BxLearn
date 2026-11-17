@@ -1,12 +1,16 @@
 {
   "name": "bxlearn-demo-studio",
   "version": "1.0.0",
+  "type": "module",
+  "private": true,
   "description": "Minimalistic Storylane-style video walkthrough creator with folder hierarchy backend and Webflow export",
-  "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
-    "build": "node sync-static.js"
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "^5.4.0"
   },
   "engines": {
     "node": ">=18.0.0"
