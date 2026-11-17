@@ -1,0 +1,41 @@
+{
+  "id": "demo-mwf8me9x-nxvb",
+  "title": "Product Feature Walkthrough",
+  "description": "",
+  "folderPath": "",
+  "videoUrl": "",
+  "videoFileName": "",
+  "useSampleCanvasVideo": false,
+  "createdAt": "2026-11-13T17:15:19.367Z",
+  "updatedAt": "2026-11-13T17:15:57.872Z",
+  "settings": {
+    "primaryColor": "#0076DD",
+    "secondaryColor": "#00182C",
+    "autoplayFirstSegment": true,
+    "showStepBar": true,
+    "loopDemo": false
+  },
+  "steps": [
+    {
+      "id": "step-mwf8mn59-0-wwe",
+      "type": "hotspot",
+      "backdrop": "blur",
+      "kicker": "",
+      "timestamp": 0,
+      "title": "Step 1: Click here",
+      "body": "Click the highlighted hotspot on this screen to continue.",
+      "x": 50,
+      "y": 56.1,
+      "style": "trace",
+      "placement": "auto",
+      "buttonText": "Continue",
+      "advanceOnHotspotClick": true,
+      "ctaUrl": "",
+      "imageUrl": "/api/demos/demo-mwf8me9x-nxvb/media/screen-mwf8mn50-kv9m.png",
+      "imageName": "Frame 2055247023.png",
+      "w": 100,
+      "h": 6.1,
+      "showTooltip": true
+    }
+  ]
+}

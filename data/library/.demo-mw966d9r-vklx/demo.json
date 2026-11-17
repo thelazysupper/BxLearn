@@ -1,0 +1,48 @@
+{
+  "id": "demo-mw966d9r-vklx",
+  "title": "Product Feature Walkthrough",
+  "description": "",
+  "folderPath": "",
+  "videoUrl": "/api/demos/demo-mw966d9r-vklx/media/video.mov?t=1794223382862",
+  "videoFileName": "Skjermopptak 2026-11-09 kl. 12.20.27.mov",
+  "useSampleCanvasVideo": false,
+  "createdAt": "2026-11-09T11:20:15.280Z",
+  "updatedAt": "2026-11-09T13:24:23.171Z",
+  "settings": {
+    "primaryColor": "#0076DD",
+    "secondaryColor": "#00182C",
+    "autoplayFirstSegment": true,
+    "showStepBar": true,
+    "loopDemo": false
+  },
+  "steps": [
+    {
+      "id": "step-mw96ambe",
+      "timestamp": 3.7,
+      "title": "Step 1: Click here",
+      "body": "Describe the action the user should take on this screen.",
+      "x": 67.5,
+      "y": 71.3,
+      "style": "beacon",
+      "placement": "auto",
+      "buttonText": "Next",
+      "advanceOnHotspotClick": true,
+      "ctaUrl": ""
+    },
+    {
+      "id": "step-mw96b66x",
+      "timestamp": 4.4,
+      "title": "Step 2: Click here",
+      "body": "Describe the action the user should take on this screen.",
+      "x": 50,
+      "y": 50,
+      "style": "beacon",
+      "placement": "auto",
+      "buttonText": "Next",
+      "advanceOnHotspotClick": true,
+      "ctaUrl": "",
+      "type": "hotspot",
+      "kicker": "Product Tour"
+    }
+  ]
+}
