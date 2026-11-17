@@ -64,12 +64,15 @@ function showToast(message) {
 }
 
 // =========================================================
-// EXACT MEDIA ASPECT-RATIO VIEWPORT LOCK
-// Ensures #video-viewport and #hotspot-overlay match the
-// rendered video/screenshot aspect ratio 1:1 with clean corner radius.
+// STEADY BACKDROP FRAME + CENTERED ASPECT-RATIO SCREEN LOCK
+// Outer #stage-backdrop-frame stays at a steady 16:9 ratio
+// with background color, while inner #video-viewport is
+// centered at the exact aspect ratio of the current video or
+// screenshot (vertical or horizontal) with rounded corners.
 // =========================================================
 function syncViewportSize() {
   const wrap = document.getElementById('stage-viewport-wrap');
+  const backdrop = document.getElementById('stage-backdrop-frame');
   const viewport = document.getElementById('video-viewport');
   if (!wrap || !viewport) return;
 
@@ -77,17 +80,38 @@ function syncViewportSize() {
   const ch = wrap.clientHeight;
   if (!cw || !ch) return;
 
-  const pad = 36;
-  const availW = Math.max(200, cw - pad);
-  const availH = Math.max(140, ch - pad);
-  const ratio = state.videoAspectRatio || (16 / 9);
+  // 1. Fit outer backdrop frame at steady 16:9 ratio
+  const outerPad = 32;
+  const maxOuterW = Math.max(240, cw - outerPad);
+  const maxOuterH = Math.max(160, ch - outerPad);
+  const backdropRatio = 16 / 9;
+
+  let outerW = maxOuterW;
+  let outerH = outerW / backdropRatio;
+  if (outerH > maxOuterH) {
+    outerH = maxOuterH;
+    outerW = outerH * backdropRatio;
+  }
+  outerW = Math.floor(outerW);
+  outerH = Math.floor(outerH);
+
+  if (backdrop) {
+    backdrop.style.width = `${outerW}px`;
+    backdrop.style.height = `${outerH}px`;
+  }
+
+  // 2. Fit inner screen (#video-viewport) centered inside the backdrop with breathing room
+  const innerPad = Math.max(24, Math.round(Math.min(outerW, outerH) * 0.065));
+  const availW = Math.max(120, outerW - innerPad * 2);
+  const availH = Math.max(100, outerH - innerPad * 2);
+  const mediaRatio = state.videoAspectRatio || (16 / 9);
 
   let targetW = availW;
-  let targetH = targetW / ratio;
+  let targetH = targetW / mediaRatio;
 
   if (targetH > availH) {
     targetH = availH;
-    targetW = targetH * ratio;
+    targetW = targetH * mediaRatio;
   }
 
   const w = Math.floor(targetW);
@@ -1972,8 +1996,10 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
   let stepIdx = 0, waiting = false;
   root.innerHTML = \`
     <style>
-      #${widgetId} .bx-wrap { background:#00182C; border-radius:14px; overflow:hidden; box-shadow:0 18px 44px rgba(0,24,44,0.18); position:relative; }
-      #${widgetId} .bx-stage { position:relative; aspect-ratio:16/9; width:100%; background:#00101F; overflow:hidden; }
+      #${widgetId} .bx-wrap { background:#00182C; border-radius:16px; overflow:hidden; box-shadow:0 18px 44px rgba(0,24,44,0.18); position:relative; }
+      #${widgetId} .bx-stage { position:relative; aspect-ratio:16/9; width:100%; background:radial-gradient(circle at 50% 18%, #0B2B4C 0%, #00182C 100%); display:flex; align-items:center; justify-content:center; padding:3.2%; box-sizing:border-box; overflow:hidden; }
+      #${widgetId} .bx-screen-inner { position:relative; width:100%; height:100%; border-radius:12px; box-shadow:0 16px 40px rgba(0,10,22,0.42), 0 0 0 1px rgba(255,255,255,0.14); overflow:visible; }
+      #${widgetId} .bx-media-clip { position:absolute; inset:0; border-radius:inherit; overflow:hidden; background:#00101F; }
       #${widgetId} video, #${widgetId} .bx-img { width:100%; height:100%; display:block; object-fit:fill; }
       #${widgetId} .bx-overlay { position:absolute; inset:0; pointer-events:none; }
       #${widgetId} .bx-anchor { position:absolute; width:0; height:0; pointer-events:auto; }
@@ -1982,26 +2008,57 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       #${widgetId} .bx-tip { position:absolute; width:270px; background:#FFF; border-radius:12px; padding:15px; box-shadow:0 16px 38px rgba(0,24,44,0.24); }
       #${widgetId} .bx-tip h4 { font-family:'Host Grotesk',sans-serif; font-weight:600; color:#00182C; font-size:15px; margin:0 0 5px; }
       #${widgetId} .bx-tip p { font-family:'Google Sans',sans-serif; color:#324158; font-size:13px; margin:0 0 12px; line-height:1.45; }
-      #${widgetId} .bx-screen { position:absolute; inset:0; background:rgba(0,24,44,0.78); display:flex; align-items:center; justify-content:center; padding:24px; pointer-events:auto; }
+      #${widgetId} .bx-screen { position:absolute; inset:0; border-radius:12px; background:rgba(0,24,44,0.78); display:flex; align-items:center; justify-content:center; padding:24px; pointer-events:auto; }
       #${widgetId} .bx-screen-card { max-width:440px; width:100%; background:#FFF; border-radius:16px; padding:30px; text-align:center; box-shadow:0 24px 52px rgba(0,24,44,0.28); }
       #${widgetId} .bx-btn { background:#0076DD; color:#FFF; border:none; border-radius:7px; padding:8px 16px; font-family:'Host Grotesk',sans-serif; font-weight:600; font-size:13px; cursor:pointer; }
       #${widgetId} .bx-bar { background:#FFF; border-top:1px solid #E2E8F0; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; }
     </style>
     <div class="bx-wrap">
       <div class="bx-stage">
-        <video playsinline preload="metadata" src="\${demo.videoUrl}"></video>
-        <img class="bx-img" style="display:none;" alt="" />
-        <div class="bx-overlay"></div>
+        <div class="bx-screen-inner">
+          <div class="bx-media-clip">
+            <video playsinline preload="metadata" src="\${demo.videoUrl}"></video>
+            <img class="bx-img" style="display:none;" alt="" />
+          </div>
+          <div class="bx-overlay"></div>
+        </div>
       </div>
       <div class="bx-bar">
         <strong style="font-family:'Host Grotesk',sans-serif; color:#00182C; font-size:14px;">\${demo.title}</strong>
         <div class="bx-dots" style="display:flex; gap:6px;"></div>
       </div>
     </div>\`;
+  const stage = root.querySelector(".bx-stage");
+  const inner = root.querySelector(".bx-screen-inner");
   const video = root.querySelector("video");
   const img = root.querySelector(".bx-img");
   const overlay = root.querySelector(".bx-overlay");
   const dots = root.querySelector(".bx-dots");
+  let mediaRatio = 16 / 9;
+
+  function fitInner() {
+    if (!stage || !inner) return;
+    const sw = stage.clientWidth * 0.92;
+    const sh = stage.clientHeight * 0.90;
+    if (!sw || !sh) return;
+    let w = sw, h = w / mediaRatio;
+    if (h > sh) { h = sh; w = h * mediaRatio; }
+    inner.style.width = Math.floor(w) + "px";
+    inner.style.height = Math.floor(h) + "px";
+  }
+  window.addEventListener("resize", fitInner);
+  video.addEventListener("loadedmetadata", () => {
+    if (video.videoWidth && video.videoHeight) {
+      mediaRatio = video.videoWidth / video.videoHeight;
+      fitInner();
+    }
+  });
+  img.addEventListener("load", () => {
+    if (img.naturalWidth && img.naturalHeight) {
+      mediaRatio = img.naturalWidth / img.naturalHeight;
+      fitInner();
+    }
+  });
 
   function render() {
     overlay.innerHTML = "";

@@ -999,15 +999,31 @@ svg.lucide {
   position: relative;
 }
 
-/* Locked 1:1 to media aspect ratio with clean corner radius */
+/* Outer steady 16:9 background stage behind vertical/horizontal screens */
+.stage-backdrop-frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 18%, #0B2B4C 0%, #00182C 100%);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(0, 24, 44, 0.12);
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+/* Inner screen centered on the backdrop with its own aspect ratio & corner radius */
 .video-viewport {
   position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  background: var(--secondary);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  background: #00101F;
+  border-radius: 12px;
+  box-shadow:
+    0 16px 40px rgba(0, 10, 22, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.14);
+  flex-shrink: 0;
   overflow: visible;
+  transition: width 0.18s var(--ease-out), height 0.18s var(--ease-out);
 }
 
 .viewport-media-clip {
