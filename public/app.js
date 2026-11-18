@@ -1211,7 +1211,7 @@ function syncStageMediaForStep(step) {
 
 function sortActiveSteps() {
   if (!state.activeDemo || !Array.isArray(state.activeDemo.steps)) return;
-  if (!demoHasVideo(state.activeDemo)) return;
+  if (!demoHasVideo(state.activeDemo) || state.activeDemo.manualStepOrder) return;
   state.activeDemo.steps.sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
 }
 
@@ -1346,6 +1346,26 @@ function setEditorMode(mode) {
   refreshIcons();
 }
 
+let draggedStepId = null;
+
+function reorderStep(fromIdx, toIdx) {
+  if (!state.activeDemo || !Array.isArray(state.activeDemo.steps)) return;
+  const steps = state.activeDemo.steps;
+  if (fromIdx < 0 || fromIdx >= steps.length || toIdx < 0 || toIdx >= steps.length || fromIdx === toIdx) return;
+
+  const [moved] = steps.splice(fromIdx, 1);
+  steps.splice(toIdx, 0, moved);
+  state.activeDemo.manualStepOrder = true;
+
+  renderEditorStepsList();
+  renderInspectorPanel();
+  renderTimelineMarkers();
+  renderHotspotOverlay();
+  if (state.editorMode === 'preview') renderPreviewStepDots();
+  scheduleAutoSave();
+  refreshIcons();
+}
+
 function duplicateStep(stepId) {
   if (!state.activeDemo || !Array.isArray(state.activeDemo.steps)) return;
   const idx = state.activeDemo.steps.findIndex(s => s.id === stepId);
@@ -1390,7 +1410,12 @@ function renderEditorStepsList() {
       : (hasShot ? 'Screenshot' : (hasVideo ? formatSeconds(step.timestamp) : `Step ${pos.number}`));
     const card = document.createElement('div');
     card.className = `step-card ${step.id === state.selectedStepId ? 'active' : ''}`;
+    card.draggable = true;
+    card.dataset.stepId = step.id;
     card.innerHTML = `
+      <span class="step-drag-handle" title="Drag to reorder">
+        <i data-lucide="grip-vertical"></i>
+      </span>
       <div class="step-num-circle ${pos.isExplainer ? 'is-explainer' : ''}" title="${pos.isExplainer ? 'Explainer (not a step)' : (isScreen ? 'Intro / Text Screen' : (hasShot ? 'Screenshot Step' : 'Hotspot Step'))}">
         ${pos.isExplainer ? '<i data-lucide="book-open"></i>' : (isScreen ? '<i data-lucide="layout-template"></i>' : pos.number)}
       </div>
@@ -1402,6 +1427,50 @@ function renderEditorStepsList() {
         <i data-lucide="copy"></i>
       </button>
     `;
+    card.addEventListener('dragstart', e => {
+      draggedStepId = step.id;
+      card.classList.add('is-dragging');
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', step.id);
+      }
+    });
+    card.addEventListener('dragover', e => {
+      if (!draggedStepId || draggedStepId === step.id) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      const rect = card.getBoundingClientRect();
+      const isTop = (e.clientY - rect.top) < rect.height / 2;
+      listEl.querySelectorAll('.step-card').forEach(c => {
+        if (c !== card) c.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+      card.classList.toggle('drag-over-top', isTop);
+      card.classList.toggle('drag-over-bottom', !isTop);
+    });
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('drag-over-top', 'drag-over-bottom');
+      const sourceId = draggedStepId || e.dataTransfer?.getData('text/plain');
+      if (!sourceId || sourceId === step.id) return;
+      const steps = state.activeDemo.steps;
+      const fromIdx = steps.findIndex(s => s.id === sourceId);
+      const targetIdx = steps.findIndex(s => s.id === step.id);
+      if (fromIdx === -1 || targetIdx === -1) return;
+      const rect = card.getBoundingClientRect();
+      const isTop = (e.clientY - rect.top) < rect.height / 2;
+      let toIdx = isTop ? targetIdx : targetIdx + 1;
+      if (fromIdx < toIdx) toIdx -= 1;
+      reorderStep(fromIdx, toIdx);
+    });
+    card.addEventListener('dragend', () => {
+      draggedStepId = null;
+      listEl.querySelectorAll('.step-card').forEach(c => {
+        c.classList.remove('is-dragging', 'drag-over-top', 'drag-over-bottom');
+      });
+    });
     const dupBtn = card.querySelector('.step-dup-btn');
     if (dupBtn) {
       dupBtn.addEventListener('click', e => {
