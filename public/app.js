@@ -2057,9 +2057,9 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       #${widgetId} .bx-tip h4 { font-family:'Host Grotesk',sans-serif; font-weight:600; color:#00182C; font-size:15px; margin:0 0 5px; }
       #${widgetId} .bx-tip p { font-family:'Google Sans',sans-serif; color:#324158; font-size:13px; margin:0 0 12px; line-height:1.45; }
       #${widgetId} .bx-screen { position:absolute; inset:0; background:rgba(0,24,44,0.78); display:flex; align-items:center; justify-content:center; padding:24px; pointer-events:auto; }
-      #${widgetId} .bx-stage.is-split .bx-screen { padding:18px; }
+      #${widgetId} .bx-stage.is-split .bx-screen { padding:0; background:transparent; }
       #${widgetId} .bx-screen-card { max-width:440px; width:100%; background:#FFF; border-radius:16px; padding:30px; text-align:center; box-shadow:0 24px 52px rgba(0,24,44,0.28); box-sizing:border-box; }
-      #${widgetId} .bx-stage.is-split .bx-screen-card { max-width:100%; height:100%; padding:24px; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; text-align:left; overflow-y:auto; }
+      #${widgetId} .bx-stage.is-split .bx-screen-card { max-width:100%; height:100%; border-radius:0; box-shadow:none; padding:28px 32px; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; text-align:left; overflow-y:auto; }
       #${widgetId} .bx-btn { background:#0076DD; color:#FFF; border:none; border-radius:7px; padding:8px 16px; font-family:'Host Grotesk',sans-serif; font-weight:600; font-size:13px; cursor:pointer; }
       #${widgetId} .bx-bar { background:#FFF; border-top:1px solid #E2E8F0; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; }
     </style>
@@ -2273,8 +2273,8 @@ function generateHubWebflowSnippet() {
               \${step && step.imageUrl ? \`<img src="\${step.imageUrl}" alt="" style="max-width:100%;max-height:100%;width:\${isSplit ? 'auto' : '100%'};height:\${isSplit ? 'auto' : '100%'};object-fit:\${isSplit ? 'contain' : 'fill'};border-radius:\${isSplit ? '10px' : '0'};display:block;box-shadow:\${isSplit ? '0 12px 30px rgba(0,10,22,0.4)' : 'none'};" />\` : \`<video id="bx-hub-video" src="\${activeDemo.videoUrl || ''}" playsinline style="max-width:100%;max-height:100%;width:\${isSplit ? 'auto' : '100%'};height:\${isSplit ? 'auto' : '100%'};object-fit:\${isSplit ? 'contain' : 'fill'};border-radius:\${isSplit ? '10px' : '0'};"></video>\`}
             </div>
             \${step ? (isScreen ? \`
-              <div style="\${isSplit ? 'position:relative;min-width:0;min-height:0;padding:18px;' : 'position:absolute;inset:0;padding:20px;'}background:rgba(0,24,44,0.78);display:flex;align-items:center;justify-content:center;box-sizing:border-box;">
-                <div style="background:#FFF;padding:\${isSplit ? '24px' : '28px'};border-radius:14px;\${isSplit ? 'width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;text-align:left;box-sizing:border-box;overflow-y:auto;' : 'max-width:420px;text-align:center;'}box-shadow:0 20px 44px rgba(0,24,44,0.26);">
+              <div style="\${isSplit ? 'position:relative;min-width:0;min-height:0;padding:0;background:transparent;' : 'position:absolute;inset:0;padding:20px;background:rgba(0,24,44,0.78);'}display:flex;align-items:center;justify-content:center;box-sizing:border-box;">
+                <div style="background:#FFF;padding:\${isSplit ? '28px 32px' : '28px'};\${isSplit ? 'border-radius:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;text-align:left;box-sizing:border-box;overflow-y:auto;' : 'border-radius:14px;max-width:420px;text-align:center;box-shadow:0 20px 44px rgba(0,24,44,0.26);'}">
                   <div style="font-family:'Host Grotesk',sans-serif;font-weight:600;color:#00182C;font-size:20px;margin-bottom:8px;">\${step.title}</div>
                   <div style="font-size:13.5px;color:#324158;margin-bottom:16px;line-height:1.5;">\${step.body}</div>
                   <button id="bx-hub-next" style="background:#0076DD;color:#FFF;border:none;padding:8px 18px;border-radius:7px;font-weight:600;cursor:pointer;">\${step.buttonText || 'Continue'}</button>

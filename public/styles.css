@@ -1056,16 +1056,19 @@ svg.lucide {
 }
 
 .stage-backdrop-frame.is-split-layout .demo-text-screen {
-  padding: 20px;
+  padding: 0;
+  background: transparent;
 }
 
 .stage-backdrop-frame.is-split-layout .text-screen-card {
   max-width: 100%;
   height: 100%;
+  border-radius: 0;
+  box-shadow: none;
   justify-content: center;
   align-items: flex-start;
   text-align: left;
-  padding: 24px 26px;
+  padding: 32px 36px;
   overflow-y: auto;
 }
 
