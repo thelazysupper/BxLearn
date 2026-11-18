@@ -948,6 +948,91 @@ svg.lucide {
   opacity: 1;
 }
 
+.step-card-thumb {
+  width: 30px;
+  height: 20px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  background: #00101F;
+}
+
+.add-step-dropdown {
+  position: relative;
+}
+
+.add-step-trigger {
+  gap: 4px;
+  padding: 4px 8px;
+}
+
+.add-step-trigger svg.lucide {
+  width: 13px;
+  height: 13px;
+}
+
+.add-step-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 196px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 5px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.add-step-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--heading-color);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s var(--ease-out);
+}
+
+.add-step-menu-item:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.add-step-menu-item svg.lucide {
+  width: 14px;
+  height: 14px;
+  color: var(--muted-color);
+}
+
+.add-step-menu-item:hover svg.lucide {
+  color: var(--primary);
+}
+
+.add-step-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 3px 4px;
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
 .steps-sidebar-footer {
   padding: 10px;
   border-top: 1px solid var(--border-color);
@@ -1150,6 +1235,18 @@ svg.lucide {
 
 .stage-backdrop-frame.is-split-layout .text-screen-actions {
   justify-content: flex-start;
+}
+
+@media (max-width: 640px) {
+  .stage-backdrop-frame.is-split-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .stage-backdrop-frame.is-split-layout .stage-media-pane {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
 }
 
 /* Inner screen centered on the backdrop with its own aspect ratio & corner radius */

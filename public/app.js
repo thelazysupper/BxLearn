@@ -25,6 +25,8 @@ const state = {
   traceResizeDir: null,
   traceDragStart: null,
   saveTimeout: null,
+  undoStack: [],
+  redoStack: [],
 
   // Unified Media Clock (handles both real <video> and instant 8s sample <canvas>)
   usingCanvasPlayer: false,
@@ -1221,6 +1223,9 @@ function openDemoInEditor(demoId, initialMode = 'edit') {
 
   mediaPause();
   state.activeDemo = JSON.parse(JSON.stringify(found));
+  state.undoStack = [];
+  state.redoStack = [];
+  updateUndoButtonState();
   sortActiveSteps();
   state.selectedStepId = state.activeDemo.steps[0]?.id || null;
   state.currentView = 'editor';
@@ -1348,11 +1353,67 @@ function setEditorMode(mode) {
 
 let draggedStepId = null;
 
+function updateUndoButtonState() {
+  const btn = document.getElementById('btn-undo-step');
+  if (btn) btn.disabled = !state.undoStack || state.undoStack.length === 0;
+}
+
+function pushUndoSnapshot() {
+  if (!state.activeDemo) return;
+  state.undoStack.push({
+    steps: JSON.parse(JSON.stringify(state.activeDemo.steps || [])),
+    selectedStepId: state.selectedStepId,
+    manualStepOrder: Boolean(state.activeDemo.manualStepOrder)
+  });
+  if (state.undoStack.length > 40) state.undoStack.shift();
+  state.redoStack = [];
+  updateUndoButtonState();
+}
+
+function applyHistorySnapshot(snap) {
+  if (!snap || !state.activeDemo) return;
+  state.activeDemo.steps = snap.steps;
+  state.activeDemo.manualStepOrder = snap.manualStepOrder;
+  state.selectedStepId = snap.selectedStepId;
+  setupEditorVideoSource();
+  renderEditorStepsList();
+  renderInspectorPanel();
+  renderTimelineMarkers();
+  renderHotspotOverlay();
+  if (state.editorMode === 'preview') renderPreviewStepDots();
+  scheduleAutoSave();
+  refreshIcons();
+  updateUndoButtonState();
+}
+
+function undoStepEdit() {
+  if (!state.activeDemo || state.undoStack.length === 0) return;
+  state.redoStack.push({
+    steps: JSON.parse(JSON.stringify(state.activeDemo.steps || [])),
+    selectedStepId: state.selectedStepId,
+    manualStepOrder: Boolean(state.activeDemo.manualStepOrder)
+  });
+  applyHistorySnapshot(state.undoStack.pop());
+  showToast('Undid change');
+}
+
+function redoStepEdit() {
+  if (!state.activeDemo || state.redoStack.length === 0) return;
+  state.undoStack.push({
+    steps: JSON.parse(JSON.stringify(state.activeDemo.steps || [])),
+    selectedStepId: state.selectedStepId,
+    manualStepOrder: Boolean(state.activeDemo.manualStepOrder)
+  });
+  applyHistorySnapshot(state.redoStack.pop());
+  showToast('Redid change');
+}
+
 function reorderStep(fromIdx, toIdx) {
   if (!state.activeDemo || !Array.isArray(state.activeDemo.steps)) return;
   const steps = state.activeDemo.steps;
   if (fromIdx < 0 || fromIdx >= steps.length || toIdx < 0 || toIdx >= steps.length || fromIdx === toIdx) return;
 
+  pushUndoSnapshot();
   const [moved] = steps.splice(fromIdx, 1);
   steps.splice(toIdx, 0, moved);
   state.activeDemo.manualStepOrder = true;
@@ -1371,6 +1432,7 @@ function duplicateStep(stepId) {
   const idx = state.activeDemo.steps.findIndex(s => s.id === stepId);
   if (idx === -1) return;
 
+  pushUndoSnapshot();
   const original = state.activeDemo.steps[idx];
   const cloned = {
     ...original,
@@ -1419,6 +1481,7 @@ function renderEditorStepsList() {
       <div class="step-num-circle ${pos.isExplainer ? 'is-explainer' : ''}" title="${pos.isExplainer ? 'Explainer (not a step)' : (isScreen ? 'Intro / Text Screen' : (hasShot ? 'Screenshot Step' : 'Hotspot Step'))}">
         ${pos.isExplainer ? '<i data-lucide="book-open"></i>' : (isScreen ? '<i data-lucide="layout-template"></i>' : pos.number)}
       </div>
+      ${hasShot ? `<img src="${escapeHtml(step.imageUrl)}" alt="" class="step-card-thumb" loading="lazy" />` : ''}
       <div class="step-card-info">
         <div class="step-card-title">${escapeHtml(step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`))}</div>
         <span class="step-time-pill">${escapeHtml(metaLabel)}</span>
@@ -2132,6 +2195,7 @@ function scheduleAutoSave() {
 function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot', options = {}) {
   if (!state.activeDemo) return;
   mediaPause();
+  pushUndoSnapshot();
 
   const isExplainer = stepType === 'explainer' || Boolean(options.isExplainer);
   const isScreen = !isExplainer && stepType === 'screen';
@@ -2375,6 +2439,11 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       #${widgetId} .bx-stage.is-split .bx-screen-card { max-width:100%; height:100%; border-radius:0; box-shadow:none; padding:28px 32px; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; text-align:left; overflow-y:auto; }
       #${widgetId} .bx-btn { background:#0076DD; color:#FFF; border:none; border-radius:7px; padding:8px 16px; font-family:'Host Grotesk',sans-serif; font-weight:600; font-size:13px; cursor:pointer; }
       #${widgetId} .bx-bar { background:#FFF; border-top:1px solid #E2E8F0; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; }
+      @media (max-width: 640px) {
+        #${widgetId} .bx-stage.is-split { aspect-ratio:auto; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto; }
+        #${widgetId} .bx-stage.is-split .bx-media-pane { aspect-ratio:16/10; border-right:none; border-bottom:1px solid rgba(255,255,255,0.1); }
+        #${widgetId} .bx-stage.is-split .bx-screen-card { padding:20px 18px; }
+      }
     </style>
     <div class="bx-wrap">
       <div class="bx-stage">
@@ -2415,9 +2484,12 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
   function fitInner() {
     if (!stage || !inner) return;
     const isSplit = stage.classList.contains("is-split");
-    const paneW = isSplit ? (stage.clientWidth / 2) : stage.clientWidth;
+    const isStacked = isSplit && window.innerWidth <= 640;
+    const paneEl = stage.querySelector(".bx-media-pane");
+    const paneW = isStacked && paneEl ? paneEl.clientWidth : (isSplit ? (stage.clientWidth / 2) : stage.clientWidth);
+    const paneH = isStacked && paneEl ? paneEl.clientHeight : stage.clientHeight;
     const sw = paneW * 0.88;
-    const sh = stage.clientHeight * 0.88;
+    const sh = paneH * 0.88;
     if (!sw || !sh) return;
     let w = sw, h = w / mediaRatio;
     if (h > sh) { h = sh; w = h * mediaRatio; }
@@ -3470,6 +3542,27 @@ function bindEvents() {
     }
   });
 
+  // Add Step Dropdown Menu & Undo Button
+  const addMenuBtn = document.getElementById('btn-add-step-menu');
+  const addMenuEl = document.getElementById('add-step-menu');
+  if (addMenuBtn && addMenuEl) {
+    addMenuBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      addMenuEl.classList.toggle('hidden');
+    });
+    addMenuEl.addEventListener('click', e => {
+      if (e.target.closest('.add-step-menu-item')) {
+        addMenuEl.classList.add('hidden');
+      }
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.add-step-dropdown')) {
+        addMenuEl.classList.add('hidden');
+      }
+    });
+  }
+  document.getElementById('btn-undo-step')?.addEventListener('click', undoStepEdit);
+
   // Add Hotspot Step vs Add Intro/Text Screen vs Explainer Tooltip buttons
   document.getElementById('btn-add-step').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'hotspot'));
   document.getElementById('btn-add-step-timeline').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'hotspot'));
@@ -3483,6 +3576,7 @@ function bindEvents() {
     btn.addEventListener('click', () => {
       const step = getSelectedStep();
       if (!step) return;
+      pushUndoSnapshot();
       const nextType = btn.dataset.stepType;
       step.type = nextType;
       if (nextType === 'explainer') {
@@ -3516,6 +3610,7 @@ function bindEvents() {
     btn.addEventListener('click', () => {
       const step = getSelectedStep();
       if (!step) return;
+      pushUndoSnapshot();
       step.screenLayout = btn.dataset.screenLayout === 'split' ? 'split' : 'default';
       renderInspectorPanel();
       renderHotspotOverlay();
@@ -3694,6 +3789,7 @@ function bindEvents() {
   document.getElementById('btn-delete-step').addEventListener('click', () => {
     const step = getSelectedStep();
     if (!step || !state.activeDemo) return;
+    pushUndoSnapshot();
     state.activeDemo.steps = state.activeDemo.steps.filter(s => s.id !== step.id);
     state.selectedStepId = state.activeDemo.steps[0]?.id || null;
     setupEditorVideoSource();
@@ -3726,8 +3822,17 @@ function bindEvents() {
   });
 
   window.addEventListener('keydown', e => {
-    if (state.currentView !== 'editor' || state.editorMode !== 'preview') return;
+    if (state.currentView !== 'editor') return;
     if (e.target.matches('input, textarea, select')) return;
+
+    if (state.editorMode === 'edit' && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) redoStepEdit();
+      else undoStepEdit();
+      return;
+    }
+
+    if (state.editorMode !== 'preview') return;
     if (e.key === 'ArrowRight' || e.key === 'Enter') {
       e.preventDefault();
       advancePreviewStep();

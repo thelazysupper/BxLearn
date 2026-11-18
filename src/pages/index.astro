@@ -154,22 +154,40 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
         <div class="panel-header">
           <h2>Steps</h2>
           <div class="panel-header-actions">
-            <button type="button" id="btn-sidebar-wf-assets" class="icon-btn" title="Browse Webflow Assets">
-              <i data-lucide="folder-search"></i>
+            <button type="button" id="btn-undo-step" class="icon-btn" title="Undo (⌘Z)" disabled>
+              <i data-lucide="undo-2"></i>
             </button>
-            <label for="screenshot-steps-input" class="icon-btn" title="Add Screenshot Step(s)">
-              <i data-lucide="image-plus"></i>
-            </label>
+            <div class="add-step-dropdown">
+              <button type="button" id="btn-add-step-menu" class="btn btn-xs btn-primary add-step-trigger" title="Add step or explainer">
+                <i data-lucide="plus"></i>
+                <span>Add</span>
+                <i data-lucide="chevron-down"></i>
+              </button>
+              <div id="add-step-menu" class="add-step-menu hidden">
+                <button type="button" id="btn-add-step" class="add-step-menu-item">
+                  <i data-lucide="mouse-pointer-click"></i>
+                  <span>Hotspot Step</span>
+                </button>
+                <button type="button" id="btn-add-text-step" class="add-step-menu-item">
+                  <i data-lucide="layout-template"></i>
+                  <span>Text Page</span>
+                </button>
+                <button type="button" id="btn-add-explainer-step" class="add-step-menu-item">
+                  <i data-lucide="book-open"></i>
+                  <span>Explainer Tooltip</span>
+                </button>
+                <div class="add-step-menu-divider"></div>
+                <label for="screenshot-steps-input" class="add-step-menu-item">
+                  <i data-lucide="image-plus"></i>
+                  <span>Upload Screenshot(s)</span>
+                </label>
+                <button type="button" id="btn-sidebar-wf-assets" class="add-step-menu-item">
+                  <i data-lucide="folder-search"></i>
+                  <span>From Webflow Assets</span>
+                </button>
+              </div>
+            </div>
             <input id="screenshot-steps-input" type="file" accept="image/png,image/jpeg,image/webp,image/*" multiple class="hidden" />
-            <button type="button" id="btn-add-explainer-step" class="icon-btn" title="Add Explainer (not a step)">
-              <i data-lucide="book-open"></i>
-            </button>
-            <button type="button" id="btn-add-text-step" class="icon-btn" title="Add Intro / Text Screen">
-              <i data-lucide="layout-template"></i>
-            </button>
-            <button type="button" id="btn-add-step" class="icon-btn" title="Add Hotspot Step">
-              <i data-lucide="plus"></i>
-            </button>
           </div>
         </div>
 
