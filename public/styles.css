@@ -1159,6 +1159,22 @@ svg.lucide {
   transform: translate(-50%, -50%);
 }
 
+.hotspot-tooltip.is-explainer-tooltip {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: translate(-50%, -50%);
+  cursor: move;
+}
+
+.hotspot-tooltip.is-explainer-tooltip::before {
+  display: none;
+}
+
+.hotspot-tooltip.is-explainer-tooltip.is-preview {
+  cursor: default;
+}
+
 .hotspot-trace-box {
   position: absolute;
   inset: 0;
@@ -1882,6 +1898,22 @@ svg.lucide {
   padding: 2px;
   border-radius: 7px;
   gap: 2px;
+}
+
+.type-pill-group.type-pill-group-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.type-pill-group.type-pill-group-3 .type-pill-btn {
+  padding: 5px 4px;
+  font-size: 11px;
+  gap: 4px;
+}
+
+.visibility-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 8px;
 }
 
 .type-pill-btn {

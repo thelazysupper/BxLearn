@@ -338,17 +338,21 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
         </div>
 
         <div id="inspector-form" class="inspector-form">
-          <!-- Step Type Switcher: Hotspot vs Intro / Text Screen -->
+          <!-- Step Type Switcher: Hotspot vs Text Screen vs Explainer Tooltip -->
           <div class="form-group">
             <label>Step Type</label>
-            <div class="type-pill-group" id="step-type-switcher">
+            <div class="type-pill-group type-pill-group-3" id="step-type-switcher">
               <button type="button" class="type-pill-btn active" data-step-type="hotspot">
                 <i data-lucide="mouse-pointer-click"></i>
                 <span>Hotspot</span>
               </button>
               <button type="button" class="type-pill-btn" data-step-type="screen">
                 <i data-lucide="layout-template"></i>
-                <span>Text Screen</span>
+                <span>Text Page</span>
+              </button>
+              <button type="button" class="type-pill-btn" data-step-type="explainer">
+                <i data-lucide="book-open"></i>
+                <span>Explainer</span>
               </button>
             </div>
           </div>
@@ -431,16 +435,20 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
             </div>
           </div>
 
-          <!-- Button Trace extra options -->
+          <!-- Hotspot tooltip visibility (Beacon / Ring / Trace) -->
+          <div id="hotspot-tooltip-toggle" class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input id="step-show-tooltip" type="checkbox" checked />
+              <span>Show tooltip card</span>
+            </label>
+          </div>
+
+          <!-- Button Trace extra hint -->
           <div id="trace-only-fields" class="form-group trace-inspector-box hidden">
             <div class="trace-inspector-hint">
               <i data-lucide="scan-line"></i>
               <span>Drag the box or its corner handles on the stage to trace any button.</span>
             </div>
-            <label class="checkbox-label">
-              <input id="step-show-tooltip" type="checkbox" checked />
-              <span>Show tooltip card next to traced button</span>
-            </label>
           </div>
 
           <!-- Text Screen-only controls -->
@@ -467,11 +475,33 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
                 <option value="light">Minimal Light</option>
               </select>
             </div>
+          </div>
 
-            <label class="checkbox-label">
-              <input id="step-is-explainer" type="checkbox" />
-              <span>Explainer only (not a numbered step)</span>
-            </label>
+          <!-- Card Field Visibility Toggles -->
+          <div id="card-visibility-fields" class="form-group">
+            <label>Visible Elements</label>
+            <div class="visibility-grid">
+              <label class="checkbox-label">
+                <input id="step-show-kicker" type="checkbox" checked />
+                <span>Label / Counter</span>
+              </label>
+              <label class="checkbox-label">
+                <input id="step-show-title" type="checkbox" checked />
+                <span>Heading</span>
+              </label>
+              <label class="checkbox-label">
+                <input id="step-show-body" type="checkbox" checked />
+                <span>Description</span>
+              </label>
+              <label class="checkbox-label">
+                <input id="step-show-buttons" type="checkbox" checked />
+                <span>Buttons</span>
+              </label>
+              <label class="checkbox-label" id="step-show-progress-wrap">
+                <input id="step-show-progress" type="checkbox" checked />
+                <span>Progress bar</span>
+              </label>
+            </div>
           </div>
 
           <div class="form-group">

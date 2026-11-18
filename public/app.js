@@ -1116,12 +1116,13 @@ function renderLibraryView() {
 // =========================================================
 function getStepType(step) {
   if (!step) return 'hotspot';
+  if (step.type === 'explainer') return 'explainer';
   if (step.type === 'screen' || step.style === 'modal') return 'screen';
   return 'hotspot';
 }
 
 function isStepExplainer(step) {
-  return Boolean(step && getStepType(step) === 'screen' && step.isExplainer === true);
+  return Boolean(step && (step.type === 'explainer' || step.isExplainer === true));
 }
 
 function getNumberedStepPosition(steps, index) {
@@ -1444,13 +1445,17 @@ function renderInspectorPanel() {
     timestampGroup.classList.toggle('hidden', hasShot || !hasVideo);
   }
 
-  // Toggle fields based on Hotspot vs Intro/Text Screen
+  // Toggle fields based on Hotspot vs Text Screen vs Explainer Tooltip
   const isScreen = stepType === 'screen';
-  const isTrace = !isScreen && step.style === 'trace';
-  document.getElementById('screen-kicker-group').classList.toggle('hidden', !isScreen);
+  const isExplainerType = stepType === 'explainer';
+  const isHotspot = stepType === 'hotspot';
+  const isTrace = isHotspot && step.style === 'trace';
+  document.getElementById('screen-kicker-group').classList.toggle('hidden', !(isScreen || isExplainerType));
   document.getElementById('screen-only-fields').classList.toggle('hidden', !isScreen);
-  document.getElementById('hotspot-only-fields').classList.toggle('hidden', isScreen);
-  document.getElementById('hotspot-advance-group').classList.toggle('hidden', isScreen);
+  document.getElementById('hotspot-only-fields').classList.toggle('hidden', !isHotspot);
+  document.getElementById('hotspot-advance-group').classList.toggle('hidden', !isHotspot);
+  const tooltipToggleEl = document.getElementById('hotspot-tooltip-toggle');
+  if (tooltipToggleEl) tooltipToggleEl.classList.toggle('hidden', !isHotspot);
   const traceFieldsEl = document.getElementById('trace-only-fields');
   if (traceFieldsEl) traceFieldsEl.classList.toggle('hidden', !isTrace);
   if (overlay && state.editorMode === 'edit') {
@@ -1465,12 +1470,20 @@ function renderInspectorPanel() {
   document.getElementById('step-style-select').value = ['ring', 'trace'].includes(step.style) ? step.style : 'beacon';
   const showTipEl = document.getElementById('step-show-tooltip');
   if (showTipEl) showTipEl.checked = step.showTooltip !== false;
+  const showKickerEl = document.getElementById('step-show-kicker');
+  if (showKickerEl) showKickerEl.checked = step.showKicker !== false;
+  const showTitleEl = document.getElementById('step-show-title');
+  if (showTitleEl) showTitleEl.checked = step.showTitle !== false;
+  const showBodyEl = document.getElementById('step-show-body');
+  if (showBodyEl) showBodyEl.checked = step.showBody !== false;
+  const showButtonsEl = document.getElementById('step-show-buttons');
+  if (showButtonsEl) showButtonsEl.checked = step.showButtons !== false;
+  const showProgressEl = document.getElementById('step-show-progress');
+  if (showProgressEl) showProgressEl.checked = step.showProgress !== undefined ? Boolean(step.showProgress) : !isExplainerType;
   const screenLayout = step.screenLayout === 'split' ? 'split' : 'default';
   document.querySelectorAll('#step-screen-layout-switcher .type-pill-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.screenLayout === screenLayout);
   });
-  const isExplainerEl = document.getElementById('step-is-explainer');
-  if (isExplainerEl) isExplainerEl.checked = isStepExplainer(step);
   document.getElementById('step-backdrop-select').value = step.backdrop || 'blur';
   document.getElementById('step-btn-text-input').value = step.buttonText || 'Next';
   document.getElementById('coord-x-val').textContent = `${Math.round(step.x)}%`;
@@ -1593,8 +1606,13 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
   const progressPct = pos.total > 0 ? Math.round((pos.number / pos.total) * 100) : 100;
   const isLast = stepIndex === totalSteps - 1;
   const btnText = step.buttonText || (isLast ? 'Finish' : 'Next');
+  const showKicker = step.showKicker !== false;
+  const showTitle = step.showTitle !== false;
+  const showBody = step.showBody !== false;
+  const showButtons = step.showButtons !== false;
+  const showProgress = step.showProgress !== undefined ? Boolean(step.showProgress) : !pos.isExplainer;
 
-  // CASE 1: INTRO / CHAPTER / OUTRO TEXT SCREEN OR EXPLAINER (Default Full-Stage OR 50/50 Split)
+  // CASE 1: INTRO / CHAPTER / OUTRO TEXT PAGE (Default Full-Stage OR 50/50 Split)
   if (stepType === 'screen') {
     const screenOverlay = document.getElementById('stage-screen-overlay') || overlay;
     screenOverlay.classList.remove('hidden');
@@ -1603,28 +1621,83 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     screenEl.className = `demo-text-screen backdrop-${backdropMode}`;
     screenEl.innerHTML = `
       <div class="text-screen-card">
-        <div class="text-screen-kicker" id="active-stage-kicker">${step.kicker ? escapeHtml(step.kicker) : (pos.isExplainer ? 'Explainer' : `Step ${pos.number} of ${pos.total}`)}</div>
-        <h2 class="text-screen-title" id="active-stage-title">${escapeHtml(step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`))}</h2>
-        <p class="text-screen-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>
-        <div class="text-screen-actions">
-          ${stepIndex > 0 ? `<button type="button" class="btn btn-sm btn-ghost" data-step-nav="prev">Back</button>` : ''}
-          ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">Open Link</a>` : ''}
-          <button type="button" class="text-screen-btn-primary" data-step-nav="next">
-            <span id="active-stage-btn-text">${escapeHtml(btnText)}</span>
-            <i data-lucide="arrow-right"></i>
-          </button>
-        </div>
-        ${pos.isExplainer ? '' : `
+        ${showKicker ? `<div class="text-screen-kicker" id="active-stage-kicker">${step.kicker ? escapeHtml(step.kicker) : (pos.isExplainer ? 'Explainer' : `Step ${pos.number} of ${pos.total}`)}</div>` : ''}
+        ${showTitle ? `<h2 class="text-screen-title" id="active-stage-title">${escapeHtml(step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`))}</h2>` : ''}
+        ${showBody ? `<p class="text-screen-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>` : ''}
+        ${showButtons ? `
+          <div class="text-screen-actions">
+            ${stepIndex > 0 ? `<button type="button" class="btn btn-sm btn-ghost" data-step-nav="prev">Back</button>` : ''}
+            ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">Open Link</a>` : ''}
+            <button type="button" class="text-screen-btn-primary" data-step-nav="next">
+              <span id="active-stage-btn-text">${escapeHtml(btnText)}</span>
+              <i data-lucide="arrow-right"></i>
+            </button>
+          </div>
+        ` : ''}
+        ${showProgress ? `
           <div class="tooltip-progress-bar" style="width:100%; margin-top:16px; margin-bottom:0;">
             <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
           </div>
-        `}
+        ` : ''}
       </div>
     `;
     screenEl.addEventListener('pointerdown', e => e.stopPropagation());
     screenEl.addEventListener('click', e => e.stopPropagation());
     bindStepCardNavigation(screenEl, stepIndex, totalSteps, isPreview);
     screenOverlay.appendChild(screenEl);
+    return;
+  }
+
+  // CASE 1B: EXPLAINER TOOLTIP (Floating tooltip card, not a page, not a numbered step)
+  if (stepType === 'explainer') {
+    const anchor = document.createElement('div');
+    anchor.className = 'hotspot-anchor';
+    anchor.id = 'active-hotspot-anchor';
+    anchor.style.left = `${step.x}%`;
+    anchor.style.top = `${step.y}%`;
+
+    const tooltip = document.createElement('div');
+    tooltip.id = 'active-hotspot-tooltip';
+    tooltip.className = `hotspot-tooltip is-explainer-tooltip ${isPreview ? 'is-preview' : ''}`;
+    tooltip.innerHTML = `
+      ${showKicker ? `
+        <div class="tooltip-step-top">
+          <span class="tooltip-step-counter" id="active-stage-kicker">${escapeHtml(step.kicker || 'Explainer')}</span>
+        </div>
+      ` : ''}
+      ${showTitle ? `<h3 class="tooltip-title" id="active-stage-title">${escapeHtml(step.title || 'Explainer')}</h3>` : ''}
+      ${showBody ? `<p class="tooltip-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>` : ''}
+      ${showButtons ? `
+        <div class="tooltip-footer">
+          ${stepIndex > 0 ? `<button type="button" class="btn btn-xs btn-ghost" data-step-nav="prev">Back</button>` : `<span></span>`}
+          <div style="display:flex; gap:6px;">
+            ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline">Open Link</a>` : ''}
+            <button type="button" class="btn btn-xs btn-primary" data-step-nav="next"><span id="active-stage-btn-text">${escapeHtml(btnText)}</span></button>
+          </div>
+        </div>
+      ` : ''}
+      ${showProgress ? `
+        <div class="tooltip-progress-bar">
+          <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
+        </div>
+      ` : ''}
+    `;
+
+    if (!isPreview) {
+      tooltip.addEventListener('pointerdown', e => {
+        if (e.target.closest('button, a')) return;
+        e.stopPropagation();
+        e.preventDefault();
+        state.isDraggingHotspot = true;
+        state.traceAction = null;
+      });
+    } else {
+      tooltip.addEventListener('pointerdown', e => e.stopPropagation());
+    }
+    tooltip.addEventListener('click', e => e.stopPropagation());
+    bindStepCardNavigation(tooltip, stepIndex, totalSteps, isPreview);
+    anchor.appendChild(tooltip);
+    overlay.appendChild(anchor);
     return;
   }
 
@@ -1726,27 +1799,33 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     anchor.appendChild(pin);
   }
 
-  const shouldShowTooltip = !isTrace || step.showTooltip !== false;
+  const shouldShowTooltip = step.showTooltip !== false;
   if (shouldShowTooltip) {
     const tooltip = document.createElement('div');
     tooltip.id = 'active-hotspot-tooltip';
     tooltip.className = `hotspot-tooltip ${resolvePlacementClass(step)}`;
     tooltip.innerHTML = `
-      <div class="tooltip-step-top">
-        <span class="tooltip-step-counter">Step ${pos.number} of ${pos.total}</span>
-      </div>
-      <h3 class="tooltip-title" id="active-stage-title">${escapeHtml(step.title || `Step ${pos.number}`)}</h3>
-      <p class="tooltip-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>
-      <div class="tooltip-footer">
-        ${stepIndex > 0 ? `<button type="button" class="btn btn-xs btn-ghost" data-step-nav="prev">Back</button>` : `<span></span>`}
-        <div style="display:flex; gap:6px;">
-          ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline">Open Link</a>` : ''}
-          <button type="button" class="btn btn-xs btn-primary" data-step-nav="next"><span id="active-stage-btn-text">${escapeHtml(btnText)}</span></button>
+      ${showKicker ? `
+        <div class="tooltip-step-top">
+          <span class="tooltip-step-counter">Step ${pos.number} of ${pos.total}</span>
         </div>
-      </div>
-      <div class="tooltip-progress-bar">
-        <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
-      </div>
+      ` : ''}
+      ${showTitle ? `<h3 class="tooltip-title" id="active-stage-title">${escapeHtml(step.title || `Step ${pos.number}`)}</h3>` : ''}
+      ${showBody ? `<p class="tooltip-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>` : ''}
+      ${showButtons ? `
+        <div class="tooltip-footer">
+          ${stepIndex > 0 ? `<button type="button" class="btn btn-xs btn-ghost" data-step-nav="prev">Back</button>` : `<span></span>`}
+          <div style="display:flex; gap:6px;">
+            ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline">Open Link</a>` : ''}
+            <button type="button" class="btn btn-xs btn-primary" data-step-nav="next"><span id="active-stage-btn-text">${escapeHtml(btnText)}</span></button>
+          </div>
+        </div>
+      ` : ''}
+      ${showProgress ? `
+        <div class="tooltip-progress-bar">
+          <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
+        </div>
+      ` : ''}
     `;
 
     tooltip.addEventListener('pointerdown', e => e.stopPropagation());
@@ -1952,8 +2031,8 @@ function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot', options = {}
   if (!state.activeDemo) return;
   mediaPause();
 
-  const isScreen = stepType === 'screen';
-  const isExplainer = isScreen && Boolean(options.isExplainer);
+  const isExplainer = stepType === 'explainer' || Boolean(options.isExplainer);
+  const isScreen = !isExplainer && stepType === 'screen';
   const hasSteps = state.activeDemo.steps && state.activeDemo.steps.length > 0;
   const timestamp = (isScreen && !hasSteps) ? 0.0 : Number(mediaGetTime().toFixed(1));
   const numberedCount = (state.activeDemo.steps || []).filter(s => !isStepExplainer(s)).length;
@@ -1964,8 +2043,13 @@ function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot', options = {}
 
   const newStep = {
     id: `step-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-    type: isScreen ? 'screen' : 'hotspot',
+    type: isExplainer ? 'explainer' : (isScreen ? 'screen' : 'hotspot'),
     isExplainer,
+    showKicker: true,
+    showTitle: true,
+    showBody: true,
+    showButtons: true,
+    showProgress: !isExplainer,
     screenLayout: 'default',
     backdrop: 'blur',
     kicker: isExplainer ? 'Explainer' : (isScreen ? (timestamp === 0 ? 'Welcome • Product Tour' : `Chapter ${stepNum}`) : ''),
@@ -2245,7 +2329,7 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
     dots.innerHTML = "";
     let stepNumCounter = 0;
     const stepNumbers = demo.steps.map(item => {
-      const itemIsExplainer = (item.type === "screen" || item.style === "modal") && item.isExplainer === true;
+      const itemIsExplainer = item.type === "explainer" || item.isExplainer === true;
       if (itemIsExplainer) return null;
       stepNumCounter += 1;
       return stepNumCounter;
@@ -2265,8 +2349,13 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       return;
     }
     const s = demo.steps[stepIdx];
-    const isScreen = (s.type === "screen" || s.style === "modal");
+    const isExplainer = s.type === "explainer";
+    const isScreen = !isExplainer && (s.type === "screen" || s.style === "modal");
     const isSplit = isScreen && s.screenLayout === "split";
+    const showKicker = s.showKicker !== false;
+    const showTitle = s.showTitle !== false;
+    const showBody = s.showBody !== false;
+    const showButtons = s.showButtons !== false;
     stage.classList.toggle("is-split", isSplit);
     if (s.imageUrl) {
       video.style.display = "none";
@@ -2280,14 +2369,27 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
     if (isScreen) {
       const scr = document.createElement("div");
       scr.className = "bx-screen";
-      scr.innerHTML = \`<div class="bx-screen-card"><h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;margin:0 0 8px;">\${s.title}</h3><p style="font-size:14px;color:#324158;margin:0 0 18px;line-height:1.5;">\${s.body}</p><button class="bx-btn">\${s.buttonText || 'Continue'}</button></div>\`;
-      scr.querySelector("button").onclick = next;
+      scr.innerHTML = \`<div class="bx-screen-card">\${showKicker && s.kicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;background:rgba(0,118,221,0.1);padding:4px 10px;border-radius:99px;display:inline-block;margin-bottom:10px;">\${s.kicker}</div>\` : ''}\${showTitle ? \`<h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;margin:0 0 8px;">\${s.title}</h3>\` : ''}\${showBody ? \`<p style="font-size:14px;color:#324158;margin:0 0 18px;line-height:1.5;">\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Continue'}</button>\` : ''}</div>\`;
+      const btnEl = scr.querySelector("button");
+      if (btnEl) btnEl.onclick = next;
       screenOverlay.appendChild(scr);
       return;
     }
     const anchor = document.createElement("div");
     anchor.className = "bx-anchor";
     anchor.style.left = s.x + "%"; anchor.style.top = s.y + "%";
+    if (isExplainer) {
+      const tip = document.createElement("div");
+      tip.className = "bx-tip";
+      tip.style.transform = "translate(-50%, -50%)";
+      tip.style.pointerEvents = "auto";
+      tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">\${s.kicker || 'Explainer'}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Continue'}</button>\` : ''}\`;
+      const btnEl = tip.querySelector("button");
+      if (btnEl) btnEl.onclick = next;
+      anchor.appendChild(tip);
+      overlay.appendChild(anchor);
+      return;
+    }
     if (s.style === "trace") {
       anchor.style.width = (s.w || 16) + "%";
       anchor.style.height = (s.h || 8) + "%";
@@ -2304,13 +2406,15 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       anchor.appendChild(pin);
     }
 
-    if (s.style !== "trace" || s.showTooltip !== false) {
+    if (s.showTooltip !== false) {
       const tip = document.createElement("div");
       tip.className = "bx-tip";
+      tip.style.pointerEvents = "auto";
       if (s.x > 62) { tip.style.right = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
       else { tip.style.left = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
-      tip.innerHTML = \`<h4>\${s.title}</h4><p>\${s.body}</p><button class="bx-btn">\${s.buttonText || 'Next'}</button>\`;
-      tip.querySelector("button").onclick = next;
+      tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">Step \${stepNumbers[stepIdx] || (stepIdx+1)}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Next'}</button>\` : ''}\`;
+      const btnEl = tip.querySelector("button");
+      if (btnEl) btnEl.onclick = next;
       anchor.appendChild(tip);
     }
     overlay.appendChild(anchor);
@@ -3229,35 +3333,42 @@ function bindEvents() {
     }
   });
 
-  // Add Hotspot Step vs Add Intro/Text Screen vs Explainer buttons
+  // Add Hotspot Step vs Add Intro/Text Screen vs Explainer Tooltip buttons
   document.getElementById('btn-add-step').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'hotspot'));
   document.getElementById('btn-add-step-timeline').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'hotspot'));
   document.getElementById('btn-add-text-step').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'screen'));
   document.getElementById('btn-add-text-timeline').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'screen'));
-  document.getElementById('btn-add-explainer-step').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'screen', { isExplainer: true }));
-  document.getElementById('btn-add-explainer-timeline').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'screen', { isExplainer: true }));
+  document.getElementById('btn-add-explainer-step').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'explainer', { isExplainer: true }));
+  document.getElementById('btn-add-explainer-timeline').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'explainer', { isExplainer: true }));
 
-  // Step Type Switcher inside Inspector (Hotspot <-> Text Screen)
+  // Step Type Switcher inside Inspector (Hotspot <-> Text Page <-> Explainer Tooltip)
   document.querySelectorAll('#step-type-switcher .type-pill-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const step = getSelectedStep();
       if (!step) return;
       const nextType = btn.dataset.stepType;
       step.type = nextType;
+      if (nextType === 'explainer') {
+        step.isExplainer = true;
+        step.showProgress = false;
+        if (!step.kicker || step.kicker === 'Product Tour') step.kicker = 'Explainer';
+      } else {
+        step.isExplainer = false;
+      }
       if (nextType === 'screen' && !step.kicker) {
         step.kicker = 'Product Tour';
       }
       if (nextType === 'screen' && !step.screenLayout) {
         step.screenLayout = 'default';
       }
-      if (nextType === 'hotspot') {
-        step.isExplainer = false;
-        if (step.style === 'modal') step.style = 'beacon';
+      if (nextType === 'hotspot' && step.style === 'modal') {
+        step.style = 'beacon';
       }
       renderEditorStepsList();
       renderInspectorPanel();
       renderTimelineMarkers();
       renderHotspotOverlay();
+      if (state.editorMode === 'preview') renderPreviewStepDots();
       scheduleAutoSave();
       refreshIcons();
     });
@@ -3276,25 +3387,24 @@ function bindEvents() {
     });
   });
 
-  // Explainer-only toggle (not counted as a numbered step)
-  const isExplainerInput = document.getElementById('step-is-explainer');
-  if (isExplainerInput) {
-    isExplainerInput.addEventListener('change', e => {
+  // Card Element Visibility Checkboxes
+  [
+    ['step-show-kicker', 'showKicker'],
+    ['step-show-title', 'showTitle'],
+    ['step-show-body', 'showBody'],
+    ['step-show-buttons', 'showButtons'],
+    ['step-show-progress', 'showProgress']
+  ].forEach(([elId, prop]) => {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.addEventListener('change', e => {
       const step = getSelectedStep();
       if (!step) return;
-      step.isExplainer = Boolean(e.target.checked);
-      if (step.isExplainer && (!step.kicker || step.kicker === 'Product Tour')) {
-        step.kicker = 'Explainer';
-      }
-      renderEditorStepsList();
-      renderInspectorPanel();
-      renderTimelineMarkers();
+      step[prop] = Boolean(e.target.checked);
       renderHotspotOverlay();
-      if (state.editorMode === 'preview') renderPreviewStepDots();
       scheduleAutoSave();
-      refreshIcons();
     });
-  }
+  });
 
   const setStepToCurrentVideoTime = () => {
     const step = getSelectedStep();
