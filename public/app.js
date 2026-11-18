@@ -511,6 +511,75 @@ async function apiUploadVideo(demoId, file) {
   }
 }
 
+async function webflowUploadAsset(file) {
+  const token = state.wfConfig?.apiToken?.trim();
+  const siteId = state.wfConfig?.siteId?.trim();
+  if (!token || !siteId) return null;
+
+  const base = getAppBasePath();
+  const endpoint = `/v2/sites/${encodeURIComponent(siteId)}/assets`;
+  const fileName = file.name || `screenshot-${Date.now()}.png`;
+  const candidateUrls = [
+    `${base}/api/webflow/proxy?endpoint=${encodeURIComponent(endpoint)}`,
+    `/api/webflow/proxy?endpoint=${encodeURIComponent(endpoint)}`
+  ];
+
+  for (const proxyUrl of candidateUrls) {
+    try {
+      const res = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: {
+          'X-Webflow-Token': token,
+          'X-File-Name': encodeURIComponent(fileName),
+          'Content-Type': file.type || 'image/png'
+        },
+        body: file
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data.hostedUrl || data.assetUrl)) {
+        return { imageUrl: data.hostedUrl || data.assetUrl, fileName: data.fileName || fileName };
+      }
+      if (res.status !== 404) {
+        console.warn('Webflow asset upload error:', data.error || res.status);
+        return null;
+      }
+    } catch (err) {
+      console.warn('Webflow asset upload failed:', err);
+    }
+  }
+  return null;
+}
+
+async function compressImageToDataUrl(file, maxDim = 1440, quality = 0.82) {
+  const rawUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = rawUrl;
+    });
+    const scale = Math.min(1, maxDim / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    const w = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+    const h = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    const webp = canvas.toDataURL('image/webp', quality);
+    if (webp && webp.startsWith('data:image/webp') && webp.length < rawUrl.length) return webp;
+    const jpeg = canvas.toDataURL('image/jpeg', quality);
+    if (jpeg && jpeg.length < rawUrl.length) return jpeg;
+  } catch {}
+  return rawUrl;
+}
+
 async function apiUploadScreenshot(demoId, file) {
   const fileName = file.name || `screenshot-${Date.now()}.png`;
   if (!state.usingLocalFallback) {
@@ -525,15 +594,16 @@ async function apiUploadScreenshot(demoId, file) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Screenshot upload failed');
     return { imageUrl: data.imageUrl, fileName: data.fileName || fileName };
-  } else {
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-    return { imageUrl: dataUrl, fileName };
   }
+
+  // In static/Webflow Cloud mode, prefer uploading to Webflow Assets for a short CDN URL
+  const wfUploaded = await webflowUploadAsset(file);
+  if (wfUploaded) {
+    return wfUploaded;
+  }
+
+  const dataUrl = await compressImageToDataUrl(file);
+  return { imageUrl: dataUrl, fileName };
 }
 
 // =========================================================
@@ -2375,14 +2445,67 @@ function generateHubWebflowSnippet() {
 
 function updateWebflowCodeOutput() {
   const codeOutput = document.getElementById('wf-code-output');
+  const codeLabel = document.getElementById('wf-code-label');
+  const warningEl = document.getElementById('wf-base64-warning');
+  const uploadBase64Btn = document.getElementById('btn-upload-base64-wf');
   const select = document.getElementById('wf-select-demo');
   const urlOverride = document.getElementById('wf-video-override').value.trim();
   const chosenDemo = state.demos.find(d => d.id === select.value) || state.activeDemo || state.demos[0];
 
-  if (state.activeWfTab === 'hub') {
-    codeOutput.value = generateHubWebflowSnippet();
-  } else {
-    codeOutput.value = generateSingleDemoWebflowSnippet(chosenDemo, urlOverride);
+  const snippet = state.activeWfTab === 'hub'
+    ? generateHubWebflowSnippet()
+    : generateSingleDemoWebflowSnippet(chosenDemo, urlOverride);
+  codeOutput.value = snippet;
+
+  const kb = (snippet.length / 1024).toFixed(1);
+  if (codeLabel) codeLabel.textContent = `Embed Snippet (${kb} KB)`;
+
+  const demosToCheck = state.activeWfTab === 'hub' ? state.demos : (chosenDemo ? [chosenDemo] : []);
+  const hasBase64 = demosToCheck.some(d => (d.steps || []).some(s => s && typeof s.imageUrl === 'string' && s.imageUrl.startsWith('data:image/')));
+  if (warningEl) warningEl.classList.toggle('hidden', !hasBase64);
+  if (uploadBase64Btn) {
+    const hasWf = Boolean(state.wfConfig?.apiToken && state.wfConfig?.siteId);
+    uploadBase64Btn.classList.toggle('hidden', !hasWf);
+  }
+}
+
+async function convertBase64ScreenshotsToWebflow() {
+  if (!state.wfConfig?.apiToken || !state.wfConfig?.siteId) {
+    showToast('Connect Webflow Assets first');
+    return;
+  }
+  const btn = document.getElementById('btn-upload-base64-wf');
+  if (btn) { btn.disabled = true; btn.textContent = 'Uploading...'; }
+
+  try {
+    const select = document.getElementById('wf-select-demo');
+    const chosenDemo = state.demos.find(d => d.id === select.value) || state.activeDemo || state.demos[0];
+    const targetDemos = state.activeWfTab === 'hub' ? state.demos : (chosenDemo ? [chosenDemo] : []);
+    let converted = 0;
+
+    for (const demo of targetDemos) {
+      let demoChanged = false;
+      for (const step of (demo.steps || [])) {
+        if (step && typeof step.imageUrl === 'string' && step.imageUrl.startsWith('data:image/')) {
+          const blob = await (await fetch(step.imageUrl)).blob();
+          const ext = (blob.type && blob.type.split('/')[1]) || 'png';
+          const file = new File([blob], step.imageName || `step-${step.id}.${ext}`, { type: blob.type || 'image/png' });
+          const uploaded = await webflowUploadAsset(file);
+          if (uploaded && uploaded.imageUrl) {
+            step.imageUrl = uploaded.imageUrl;
+            demoChanged = true;
+            converted += 1;
+          }
+        }
+      }
+      if (demoChanged) await apiUpdateDemo(demo);
+    }
+
+    updateWebflowCodeOutput();
+    if (state.activeDemo) renderHotspotOverlay();
+    showToast(converted > 0 ? `Converted ${converted} image(s) to Webflow CDN URLs` : 'Could not upload images to Webflow Assets');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Upload to Webflow Assets'; }
   }
 }
 
@@ -3385,6 +3508,7 @@ function bindEvents() {
 
   document.getElementById('wf-select-demo').addEventListener('change', updateWebflowCodeOutput);
   document.getElementById('wf-video-override').addEventListener('input', updateWebflowCodeOutput);
+  document.getElementById('btn-upload-base64-wf')?.addEventListener('click', convertBase64ScreenshotsToWebflow);
 
   document.getElementById('btn-copy-wf-code').addEventListener('click', () => {
     const code = document.getElementById('wf-code-output').value;

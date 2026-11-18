@@ -2146,6 +2146,20 @@ svg.lucide {
   flex-wrap: wrap;
 }
 
+.wf-base64-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  border-radius: var(--radius-md);
+  color: #92400E;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .code-box-wrap {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);

@@ -556,6 +556,11 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
             </div>
           </div>
 
+          <div id="wf-base64-warning" class="wf-base64-warning hidden">
+            <span>Some screenshots are embedded as long base64 data. Connect Webflow Assets or convert them to short CDN URLs.</span>
+            <button type="button" id="btn-upload-base64-wf" class="btn btn-xs btn-outline">Upload to Webflow Assets</button>
+          </div>
+
           <div class="code-box-wrap">
             <div class="code-box-header">
               <span id="wf-code-label">Embed Snippet</span>
