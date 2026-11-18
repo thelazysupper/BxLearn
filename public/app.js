@@ -1641,8 +1641,10 @@ function renderInspectorPanel() {
   if (showTitleEl) showTitleEl.checked = step.showTitle !== false;
   const showBodyEl = document.getElementById('step-show-body');
   if (showBodyEl) showBodyEl.checked = step.showBody !== false;
-  const showButtonsEl = document.getElementById('step-show-buttons');
-  if (showButtonsEl) showButtonsEl.checked = step.showButtons !== false;
+  const showPrimaryBtnEl = document.getElementById('step-show-primary-btn');
+  if (showPrimaryBtnEl) showPrimaryBtnEl.checked = step.showPrimaryBtn !== undefined ? Boolean(step.showPrimaryBtn) : step.showButtons !== false;
+  const showBackBtnEl = document.getElementById('step-show-back-btn');
+  if (showBackBtnEl) showBackBtnEl.checked = step.showBackBtn !== undefined ? Boolean(step.showBackBtn) : step.showButtons !== false;
   const showProgressEl = document.getElementById('step-show-progress');
   if (showProgressEl) showProgressEl.checked = step.showProgress !== undefined ? Boolean(step.showProgress) : !isExplainerType;
   const screenLayout = step.screenLayout === 'split' ? 'split' : 'default';
@@ -1774,7 +1776,9 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
   const showKicker = step.showKicker !== false;
   const showTitle = step.showTitle !== false;
   const showBody = step.showBody !== false && Boolean(step.body && step.body.trim());
-  const showButtons = step.showButtons !== false;
+  const showPrimaryBtn = step.showPrimaryBtn !== undefined ? Boolean(step.showPrimaryBtn) : step.showButtons !== false;
+  const showBackBtn = step.showBackBtn !== undefined ? Boolean(step.showBackBtn) : step.showButtons !== false;
+  const showAnyAction = (showBackBtn && stepIndex > 0) || Boolean(step.ctaUrl) || showPrimaryBtn;
   const showProgress = step.showProgress !== undefined ? Boolean(step.showProgress) : !pos.isExplainer;
 
   // CASE 1: INTRO / CHAPTER / OUTRO TEXT PAGE (Default Full-Stage OR 50/50 Split)
@@ -1789,14 +1793,16 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
         ${showKicker ? `<div class="text-screen-kicker" id="active-stage-kicker">${step.kicker ? escapeHtml(step.kicker) : (pos.isExplainer ? 'Explainer' : `Step ${pos.number} of ${pos.total}`)}</div>` : ''}
         ${showTitle ? `<h2 class="text-screen-title" id="active-stage-title">${escapeHtml(step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`))}</h2>` : ''}
         ${showBody ? `<p class="text-screen-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>` : ''}
-        ${showButtons ? `
+        ${showAnyAction ? `
           <div class="text-screen-actions">
-            ${stepIndex > 0 ? `<button type="button" class="btn btn-sm btn-ghost" data-step-nav="prev">Back</button>` : ''}
+            ${showBackBtn && stepIndex > 0 ? `<button type="button" class="btn btn-sm btn-ghost" data-step-nav="prev">Back</button>` : ''}
             ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline">Open Link</a>` : ''}
-            <button type="button" class="text-screen-btn-primary" data-step-nav="next">
-              <span id="active-stage-btn-text">${escapeHtml(btnText)}</span>
-              <i data-lucide="arrow-right"></i>
-            </button>
+            ${showPrimaryBtn ? `
+              <button type="button" class="text-screen-btn-primary" data-step-nav="next">
+                <span id="active-stage-btn-text">${escapeHtml(btnText)}</span>
+                <i data-lucide="arrow-right"></i>
+              </button>
+            ` : ''}
           </div>
         ` : ''}
         ${showProgress ? `
@@ -1832,12 +1838,12 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
       ` : ''}
       ${showTitle ? `<h3 class="tooltip-title" id="active-stage-title">${escapeHtml(step.title || 'Explainer')}</h3>` : ''}
       ${showBody ? `<p class="tooltip-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>` : ''}
-      ${showButtons ? `
+      ${showAnyAction ? `
         <div class="tooltip-footer">
-          ${stepIndex > 0 ? `<button type="button" class="btn btn-xs btn-ghost" data-step-nav="prev">Back</button>` : `<span></span>`}
+          ${showBackBtn && stepIndex > 0 ? `<button type="button" class="btn btn-xs btn-ghost" data-step-nav="prev">Back</button>` : `<span></span>`}
           <div style="display:flex; gap:6px;">
             ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline">Open Link</a>` : ''}
-            <button type="button" class="btn btn-xs btn-primary" data-step-nav="next"><span id="active-stage-btn-text">${escapeHtml(btnText)}</span></button>
+            ${showPrimaryBtn ? `<button type="button" class="btn btn-xs btn-primary" data-step-nav="next"><span id="active-stage-btn-text">${escapeHtml(btnText)}</span></button>` : ''}
           </div>
         </div>
       ` : ''}
@@ -1977,12 +1983,12 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
       ` : ''}
       ${showTitle ? `<h3 class="tooltip-title" id="active-stage-title">${escapeHtml(step.title || `Step ${pos.number}`)}</h3>` : ''}
       ${showBody ? `<p class="tooltip-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>` : ''}
-      ${showButtons ? `
+      ${showAnyAction ? `
         <div class="tooltip-footer">
-          ${stepIndex > 0 ? `<button type="button" class="btn btn-xs btn-ghost" data-step-nav="prev">Back</button>` : `<span></span>`}
+          ${showBackBtn && stepIndex > 0 ? `<button type="button" class="btn btn-xs btn-ghost" data-step-nav="prev">Back</button>` : `<span></span>`}
           <div style="display:flex; gap:6px;">
             ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline">Open Link</a>` : ''}
-            <button type="button" class="btn btn-xs btn-primary" data-step-nav="next"><span id="active-stage-btn-text">${escapeHtml(btnText)}</span></button>
+            ${showPrimaryBtn ? `<button type="button" class="btn btn-xs btn-primary" data-step-nav="next"><span id="active-stage-btn-text">${escapeHtml(btnText)}</span></button>` : ''}
           </div>
         </div>
       ` : ''}
@@ -2214,7 +2220,8 @@ function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot', options = {}
     showKicker: true,
     showTitle: true,
     showBody: true,
-    showButtons: true,
+    showPrimaryBtn: true,
+    showBackBtn: true,
     showProgress: !isExplainer,
     screenLayout: 'default',
     backdrop: 'blur',
@@ -2538,8 +2545,18 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
     const showKicker = s.showKicker !== false;
     const showTitle = s.showTitle !== false;
     const showBody = s.showBody !== false && Boolean(s.body && s.body.trim());
-    const showButtons = s.showButtons !== false;
+    const showPrimaryBtn = s.showPrimaryBtn !== undefined ? Boolean(s.showPrimaryBtn) : s.showButtons !== false;
+    const showBackBtn = s.showBackBtn !== undefined ? Boolean(s.showBackBtn) : s.showButtons !== false;
+    const showAnyAction = (showBackBtn && stepIdx > 0) || showPrimaryBtn;
+    const actionsHtml = showAnyAction ? \`<div style="display:flex;align-items:center;gap:8px;margin-top:8px;\${isScreen && !isSplit ? 'justify-content:center;' : 'justify-content:flex-start;'}">\${showBackBtn && stepIdx > 0 ? \`<button data-bx-prev style="background:transparent;color:#324158;border:none;padding:8px 12px;font-family:'Host Grotesk',sans-serif;font-weight:500;font-size:13px;cursor:pointer;">Back</button>\` : ''}\${showPrimaryBtn ? \`<button class="bx-btn" data-bx-next>\${s.buttonText || (isScreen || isExplainer ? 'Continue' : 'Next')}</button>\` : ''}</div>\` : '';
     stage.classList.toggle("is-split", isSplit);
+
+    function bindBtns(el) {
+      const n = el.querySelector("[data-bx-next]");
+      const p = el.querySelector("[data-bx-prev]");
+      if (n) n.onclick = next;
+      if (p) p.onclick = () => { if (stepIdx > 0) jump(stepIdx - 1); };
+    }
 
     function commitStepOverlay() {
       if (seq !== renderSeq) return;
@@ -2547,9 +2564,8 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       if (isScreen) {
         const scr = document.createElement("div");
         scr.className = "bx-screen";
-        scr.innerHTML = \`<div class="bx-screen-card">\${showKicker && s.kicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;background:rgba(0,118,221,0.1);padding:4px 12px;border-radius:99px;display:inline-block;margin-bottom:2px;">\${s.kicker}</div>\` : ''}\${showTitle ? \`<h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;line-height:1.25;margin:0;">\${s.title}</h3>\` : ''}\${showBody ? \`<p style="font-size:14px;color:#324158;margin:0;max-width:38ch;line-height:1.55;">\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn" style="margin-top:8px;">\${s.buttonText || 'Continue'}</button>\` : ''}</div>\`;
-        const btnEl = scr.querySelector("button");
-        if (btnEl) btnEl.onclick = next;
+        scr.innerHTML = \`<div class="bx-screen-card">\${showKicker && s.kicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;background:rgba(0,118,221,0.1);padding:4px 12px;border-radius:99px;display:inline-block;margin-bottom:2px;">\${s.kicker}</div>\` : ''}\${showTitle ? \`<h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;line-height:1.25;margin:0;">\${s.title}</h3>\` : ''}\${showBody ? \`<p style="font-size:14px;color:#324158;margin:0;max-width:38ch;line-height:1.55;">\${s.body}</p>\` : ''}\${actionsHtml}</div>\`;
+        bindBtns(scr);
         screenOverlay.appendChild(scr);
         return;
       }
@@ -2561,9 +2577,8 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
         tip.className = "bx-tip";
         tip.style.transform = "translate(-50%, -50%)";
         tip.style.pointerEvents = "auto";
-        tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">\${s.kicker || 'Explainer'}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Continue'}</button>\` : ''}\`;
-        const btnEl = tip.querySelector("button");
-        if (btnEl) btnEl.onclick = next;
+        tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">\${s.kicker || 'Explainer'}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${actionsHtml}\`;
+        bindBtns(tip);
         anchor.appendChild(tip);
         overlay.appendChild(anchor);
         return;
@@ -2590,9 +2605,8 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
         tip.style.pointerEvents = "auto";
         if (s.x > 62) { tip.style.right = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
         else { tip.style.left = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
-        tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">Step \${stepNumbers[stepIdx] || (stepIdx+1)}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Next'}</button>\` : ''}\`;
-        const btnEl = tip.querySelector("button");
-        if (btnEl) btnEl.onclick = next;
+        tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">Step \${stepNumbers[stepIdx] || (stepIdx+1)}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${actionsHtml}\`;
+        bindBtns(tip);
         anchor.appendChild(tip);
       }
       overlay.appendChild(anchor);
@@ -3625,7 +3639,8 @@ function bindEvents() {
     ['step-show-kicker', 'showKicker'],
     ['step-show-title', 'showTitle'],
     ['step-show-body', 'showBody'],
-    ['step-show-buttons', 'showButtons'],
+    ['step-show-primary-btn', 'showPrimaryBtn'],
+    ['step-show-back-btn', 'showBackBtn'],
     ['step-show-progress', 'showProgress']
   ].forEach(([elId, prop]) => {
     const el = document.getElementById(elId);
