@@ -850,6 +850,12 @@ svg.lucide {
   height: 11px;
 }
 
+.step-num-circle.is-explainer {
+  background: var(--primary-soft);
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+}
+
 .step-card.active .step-num-circle {
   background: var(--primary);
 }
@@ -1739,6 +1745,11 @@ svg.lucide {
   border-radius: 5px;
 }
 
+.timeline-pin.explainer-pin {
+  background: #475569;
+  border-radius: 5px;
+}
+
 .timeline-pin:hover, .timeline-pin.active {
   background: var(--primary);
   transform: translateX(-50%) scale(1.18);
@@ -1813,6 +1824,15 @@ svg.lucide {
   background: var(--primary);
   border-color: var(--primary);
   color: #FFFFFF;
+}
+
+.step-dot-btn.is-explainer-dot {
+  border-style: dashed;
+}
+
+.step-dot-btn.is-explainer-dot svg.lucide {
+  width: 12px;
+  height: 12px;
 }
 
 /* Inspector Sidebar */

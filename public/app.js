@@ -808,8 +808,11 @@ function checkPreviewStepPause() {
     mediaPause();
     mediaSetTime(targetTime, true);
     const isScreen = getStepType(targetStep) === 'screen';
+    const pos = getNumberedStepPosition(state.activeDemo.steps, state.previewStepIndex);
     updatePreviewStatusPill(
-      isScreen ? `Step ${state.previewStepIndex + 1} — Intro / Text Screen` : `Step ${state.previewStepIndex + 1} — Click hotspot`,
+      pos.isExplainer
+        ? 'Explainer'
+        : (isScreen ? `Step ${pos.number} — Intro / Text Screen` : `Step ${pos.number} — Click hotspot`),
       false
     );
     renderHotspotOverlay();
@@ -1047,6 +1050,23 @@ function getStepType(step) {
   return 'hotspot';
 }
 
+function isStepExplainer(step) {
+  return Boolean(step && getStepType(step) === 'screen' && step.isExplainer === true);
+}
+
+function getNumberedStepPosition(steps, index) {
+  const list = Array.isArray(steps) ? steps : [];
+  let total = 0;
+  let number = 0;
+  list.forEach((s, idx) => {
+    if (!isStepExplainer(s)) {
+      total += 1;
+      if (idx === index) number = total;
+    }
+  });
+  return { number, total, isExplainer: isStepExplainer(list[index]) };
+}
+
 function demoHasVideo(demo = state.activeDemo) {
   return Boolean(demo && (demo.videoUrl || demo.useSampleCanvasVideo));
 }
@@ -1269,18 +1289,19 @@ function renderEditorStepsList() {
 
   state.activeDemo.steps.forEach((step, idx) => {
     const isScreen = getStepType(step) === 'screen';
+    const pos = getNumberedStepPosition(state.activeDemo.steps, idx);
     const hasShot = Boolean(step.imageUrl);
-    const metaLabel = hasShot
-      ? 'Screenshot'
-      : (hasVideo ? formatSeconds(step.timestamp) : `Step ${idx + 1}`);
+    const metaLabel = pos.isExplainer
+      ? (hasShot || !hasVideo ? 'Explainer' : `Explainer • ${formatSeconds(step.timestamp)}`)
+      : (hasShot ? 'Screenshot' : (hasVideo ? formatSeconds(step.timestamp) : `Step ${pos.number}`));
     const card = document.createElement('div');
     card.className = `step-card ${step.id === state.selectedStepId ? 'active' : ''}`;
     card.innerHTML = `
-      <div class="step-num-circle" title="${isScreen ? 'Intro / Text Screen' : (hasShot ? 'Screenshot Step' : 'Hotspot Step')}">
-        ${isScreen ? '<i data-lucide="layout-template"></i>' : (idx + 1)}
+      <div class="step-num-circle ${pos.isExplainer ? 'is-explainer' : ''}" title="${pos.isExplainer ? 'Explainer (not a step)' : (isScreen ? 'Intro / Text Screen' : (hasShot ? 'Screenshot Step' : 'Hotspot Step'))}">
+        ${pos.isExplainer ? '<i data-lucide="book-open"></i>' : (isScreen ? '<i data-lucide="layout-template"></i>' : pos.number)}
       </div>
       <div class="step-card-info">
-        <div class="step-card-title">${escapeHtml(step.title || `Step ${idx + 1}`)}</div>
+        <div class="step-card-title">${escapeHtml(step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`))}</div>
         <span class="step-time-pill">${escapeHtml(metaLabel)}</span>
       </div>
     `;
@@ -1321,7 +1342,10 @@ function renderInspectorPanel() {
   if (delBtn) delBtn.classList.remove('hidden');
 
   const idx = state.activeDemo.steps.findIndex(s => s.id === step.id);
-  badgeEl.textContent = `${idx + 1} / ${state.activeDemo.steps.length}`;
+  const pos = getNumberedStepPosition(state.activeDemo.steps, idx);
+  const panelTitleEl = document.getElementById('inspector-panel-title');
+  if (panelTitleEl) panelTitleEl.textContent = pos.isExplainer ? 'Explainer' : 'Step';
+  badgeEl.textContent = pos.isExplainer ? 'Explainer' : `${pos.number} / ${pos.total}`;
 
   const stepType = getStepType(step);
   document.querySelectorAll('#step-type-switcher .type-pill-btn').forEach(btn => {
@@ -1375,6 +1399,8 @@ function renderInspectorPanel() {
   document.querySelectorAll('#step-screen-layout-switcher .type-pill-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.screenLayout === screenLayout);
   });
+  const isExplainerEl = document.getElementById('step-is-explainer');
+  if (isExplainerEl) isExplainerEl.checked = isStepExplainer(step);
   document.getElementById('step-backdrop-select').value = step.backdrop || 'blur';
   document.getElementById('step-btn-text-input').value = step.buttonText || 'Next';
   document.getElementById('coord-x-val').textContent = `${Math.round(step.x)}%`;
@@ -1392,12 +1418,15 @@ function renderTimelineMarkers() {
 
   state.activeDemo.steps.forEach((step, idx) => {
     const isScreen = getStepType(step) === 'screen';
+    const pos = getNumberedStepPosition(state.activeDemo.steps, idx);
     const pct = Math.max(0, Math.min(100, (Number(step.timestamp || 0) / duration) * 100));
     const pin = document.createElement('div');
-    pin.className = `timeline-pin ${isScreen ? 'screen-pin' : ''} ${step.id === state.selectedStepId ? 'active' : ''}`;
+    pin.className = `timeline-pin ${isScreen ? 'screen-pin' : ''} ${pos.isExplainer ? 'explainer-pin' : ''} ${step.id === state.selectedStepId ? 'active' : ''}`;
     pin.style.left = `${pct}%`;
-    pin.title = `Step ${idx + 1} (${isScreen ? 'Text Screen' : 'Hotspot'}): ${step.title} (${formatSeconds(step.timestamp)})`;
-    pin.textContent = idx + 1;
+    pin.title = pos.isExplainer
+      ? `Explainer: ${step.title} (${formatSeconds(step.timestamp)})`
+      : `Step ${pos.number} (${isScreen ? 'Text Screen' : 'Hotspot'}): ${step.title} (${formatSeconds(step.timestamp)})`;
+    pin.textContent = pos.isExplainer ? 'E' : pos.number;
     pin.addEventListener('click', e => {
       e.stopPropagation();
       state.selectedStepId = step.id;
@@ -1490,11 +1519,12 @@ function renderHotspotOverlay() {
 
 function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
   const stepType = getStepType(step);
-  const progressPct = Math.round(((stepIndex + 1) / totalSteps) * 100);
+  const pos = getNumberedStepPosition(state.activeDemo?.steps, stepIndex);
+  const progressPct = pos.total > 0 ? Math.round((pos.number / pos.total) * 100) : 100;
   const isLast = stepIndex === totalSteps - 1;
   const btnText = step.buttonText || (isLast ? 'Finish' : 'Next');
 
-  // CASE 1: INTRO / CHAPTER / OUTRO TEXT SCREEN (Default Full-Stage OR 50/50 Split)
+  // CASE 1: INTRO / CHAPTER / OUTRO TEXT SCREEN OR EXPLAINER (Default Full-Stage OR 50/50 Split)
   if (stepType === 'screen') {
     const screenOverlay = document.getElementById('stage-screen-overlay') || overlay;
     screenOverlay.classList.remove('hidden');
@@ -1503,11 +1533,13 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     screenEl.className = `demo-text-screen backdrop-${backdropMode}`;
     screenEl.innerHTML = `
       <div class="text-screen-card">
-        <div class="tooltip-progress-bar" style="width:100%; margin-bottom:14px;">
-          <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
-        </div>
-        <div class="text-screen-kicker" id="active-stage-kicker">${step.kicker ? escapeHtml(step.kicker) : `Step ${stepIndex + 1} of ${totalSteps}`}</div>
-        <h2 class="text-screen-title" id="active-stage-title">${escapeHtml(step.title || `Step ${stepIndex + 1}`)}</h2>
+        ${pos.isExplainer ? '' : `
+          <div class="tooltip-progress-bar" style="width:100%; margin-bottom:14px;">
+            <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
+          </div>
+        `}
+        <div class="text-screen-kicker" id="active-stage-kicker">${step.kicker ? escapeHtml(step.kicker) : (pos.isExplainer ? 'Explainer' : `Step ${pos.number} of ${pos.total}`)}</div>
+        <h2 class="text-screen-title" id="active-stage-title">${escapeHtml(step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`))}</h2>
         <p class="text-screen-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>
         <div class="text-screen-actions">
           ${stepIndex > 0 ? `<button type="button" class="btn btn-sm btn-ghost" data-step-nav="prev">Back</button>` : ''}
@@ -1604,7 +1636,7 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     if (step.style === 'ring') {
       pin.innerHTML = `<div class="hotspot-ring"></div>`;
     } else {
-      pin.innerHTML = `<div class="hotspot-beacon">${stepIndex + 1}</div>`;
+      pin.innerHTML = `<div class="hotspot-beacon">${pos.number}</div>`;
     }
 
     if (!isPreview) {
@@ -1634,9 +1666,9 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
         <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
       </div>
       <div class="tooltip-step-top">
-        <span class="tooltip-step-counter">Step ${stepIndex + 1} of ${totalSteps}</span>
+        <span class="tooltip-step-counter">Step ${pos.number} of ${pos.total}</span>
       </div>
-      <h3 class="tooltip-title" id="active-stage-title">${escapeHtml(step.title || `Step ${stepIndex + 1}`)}</h3>
+      <h3 class="tooltip-title" id="active-stage-title">${escapeHtml(step.title || `Step ${pos.number}`)}</h3>
       <p class="tooltip-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>
       <div class="tooltip-footer">
         ${stepIndex > 0 ? `<button type="button" class="btn btn-xs btn-ghost" data-step-nav="prev">Back</button>` : `<span></span>`}
@@ -1738,7 +1770,11 @@ function startInteractivePreview() {
       mediaSetTime(Number(firstStep.timestamp), true);
     }
     const isScreen = getStepType(firstStep) === 'screen';
-    updatePreviewStatusPill(isScreen ? 'Intro Screen' : 'Step 1 — Click hotspot', false);
+    const pos = getNumberedStepPosition(steps, 0);
+    updatePreviewStatusPill(
+      pos.isExplainer ? 'Explainer' : (isScreen ? 'Intro Screen' : `Step ${pos.number} — Click hotspot`),
+      false
+    );
     renderHotspotOverlay();
   } else {
     state.previewWaitingForClick = false;
@@ -1767,7 +1803,11 @@ function advancePreviewStep() {
     state.previewWaitingForClick = false;
     renderPreviewStepDots();
     renderHotspotOverlay();
-    updatePreviewStatusPill(`Playing to Step ${state.previewStepIndex + 1}...`, true);
+    const nextPos = getNumberedStepPosition(steps, state.previewStepIndex);
+    updatePreviewStatusPill(
+      nextPos.isExplainer ? 'Playing to Explainer...' : `Playing to Step ${nextPos.number}...`,
+      true
+    );
     mediaPlay();
   } else {
     state.previewWaitingForClick = false;
@@ -1790,7 +1830,11 @@ function jumpToPreviewStep(index) {
   }
   renderPreviewStepDots();
   const isScreen = getStepType(targetStep) === 'screen';
-  updatePreviewStatusPill(isScreen ? `Step ${index + 1} — Text Screen` : `Step ${index + 1} — Click hotspot`, false);
+  const pos = getNumberedStepPosition(steps, index);
+  updatePreviewStatusPill(
+    pos.isExplainer ? 'Explainer' : (isScreen ? `Step ${pos.number} — Text Screen` : `Step ${pos.number} — Click hotspot`),
+    false
+  );
   renderHotspotOverlay();
 }
 
@@ -1800,14 +1844,16 @@ function renderPreviewStepDots() {
   container.innerHTML = '';
 
   state.activeDemo.steps.forEach((step, idx) => {
+    const pos = getNumberedStepPosition(state.activeDemo.steps, idx);
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `step-dot-btn ${idx === state.previewStepIndex ? 'active' : ''}`;
-    btn.title = step.title || `Step ${idx + 1}`;
-    btn.textContent = idx + 1;
+    btn.className = `step-dot-btn ${pos.isExplainer ? 'is-explainer-dot' : ''} ${idx === state.previewStepIndex ? 'active' : ''}`;
+    btn.title = step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`);
+    btn.innerHTML = pos.isExplainer ? '<i data-lucide="book-open"></i>' : String(pos.number);
     btn.addEventListener('click', () => jumpToPreviewStep(idx));
     container.appendChild(btn);
   });
+  refreshIcons(container);
 }
 
 function updatePreviewStatusPill(text, isPlaying) {
@@ -1832,14 +1878,16 @@ function scheduleAutoSave() {
   }, 300);
 }
 
-function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot') {
+function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot', options = {}) {
   if (!state.activeDemo) return;
   mediaPause();
 
   const isScreen = stepType === 'screen';
+  const isExplainer = isScreen && Boolean(options.isExplainer);
   const hasSteps = state.activeDemo.steps && state.activeDemo.steps.length > 0;
   const timestamp = (isScreen && !hasSteps) ? 0.0 : Number(mediaGetTime().toFixed(1));
-  const stepNum = (state.activeDemo.steps?.length || 0) + 1;
+  const numberedCount = (state.activeDemo.steps || []).filter(s => !isStepExplainer(s)).length;
+  const stepNum = numberedCount + 1;
   const activeStep = getSelectedStep();
   const inheritedImageUrl = (!demoHasVideo(state.activeDemo) && activeStep && activeStep.imageUrl) ? activeStep.imageUrl : '';
   const inheritedImageName = (!demoHasVideo(state.activeDemo) && activeStep && activeStep.imageName) ? activeStep.imageName : '';
@@ -1847,21 +1895,26 @@ function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot') {
   const newStep = {
     id: `step-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
     type: isScreen ? 'screen' : 'hotspot',
+    isExplainer,
     screenLayout: 'default',
     backdrop: 'blur',
-    kicker: isScreen ? (timestamp === 0 ? 'Welcome • Product Tour' : `Chapter ${stepNum}`) : '',
+    kicker: isExplainer ? 'Explainer' : (isScreen ? (timestamp === 0 ? 'Welcome • Product Tour' : `Chapter ${stepNum}`) : ''),
     timestamp,
-    title: isScreen
-      ? (timestamp === 0 ? `Welcome to ${state.activeDemo.title}` : 'Key Takeaway')
-      : `Step ${stepNum}: Click here`,
-    body: isScreen
-      ? 'Introduce this section of the walkthrough before guiding the user through the next actions.'
-      : 'Click the highlighted hotspot to continue.',
+    title: isExplainer
+      ? 'About this step'
+      : (isScreen
+        ? (timestamp === 0 ? `Welcome to ${state.activeDemo.title}` : 'Key Takeaway')
+        : `Step ${stepNum}: Click here`),
+    body: isExplainer
+      ? 'Add context or background information here without counting this as a numbered step.'
+      : (isScreen
+        ? 'Introduce this section of the walkthrough before guiding the user through the next actions.'
+        : 'Click the highlighted hotspot to continue.'),
     x: Math.round(x * 10) / 10,
     y: Math.round(y * 10) / 10,
     style: 'beacon',
     placement: 'auto',
-    buttonText: isScreen && timestamp === 0 ? 'Start Tour' : 'Continue',
+    buttonText: isScreen && timestamp === 0 && !isExplainer ? 'Start Tour' : 'Continue',
     advanceOnHotspotClick: true,
     ctaUrl: '',
     imageUrl: inheritedImageUrl,
@@ -1878,7 +1931,7 @@ function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot') {
   renderHotspotOverlay();
   scheduleAutoSave();
   refreshIcons();
-  showToast(isScreen ? 'Added Text Screen' : 'Added Hotspot Step');
+  showToast(isExplainer ? 'Added Explainer' : (isScreen ? 'Added Text Screen' : 'Added Hotspot Step'));
 }
 
 async function addScreenshotStepsFromFiles(fileList) {
@@ -2120,10 +2173,19 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
     overlay.innerHTML = "";
     screenOverlay.innerHTML = "";
     dots.innerHTML = "";
+    let stepNumCounter = 0;
+    const stepNumbers = demo.steps.map(item => {
+      const itemIsExplainer = (item.type === "screen" || item.style === "modal") && item.isExplainer === true;
+      if (itemIsExplainer) return null;
+      stepNumCounter += 1;
+      return stepNumCounter;
+    });
     demo.steps.forEach((s, i) => {
       const b = document.createElement("button");
-      b.textContent = i + 1;
-      b.style.cssText = "width:26px;height:26px;border-radius:99px;border:1px solid #CBD5E1;cursor:pointer;font-weight:600;background:" + (i===stepIdx?"#0076DD":"#FFF") + ";color:" + (i===stepIdx?"#FFF":"#324158");
+      const num = stepNumbers[i];
+      b.textContent = num === null ? "•" : num;
+      b.title = s.title || (num === null ? "Explainer" : ("Step " + num));
+      b.style.cssText = "width:26px;height:26px;border-radius:99px;border:1px " + (num === null ? "dashed" : "solid") + " #CBD5E1;cursor:pointer;font-weight:600;background:" + (i===stepIdx?"#0076DD":"#FFF") + ";color:" + (i===stepIdx?"#FFF":"#324158");
       b.onclick = () => jump(i);
       dots.appendChild(b);
     });
@@ -2167,7 +2229,7 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
     } else {
       const pin = document.createElement("div");
       pin.className = "bx-pin";
-      pin.textContent = stepIdx + 1;
+      pin.textContent = stepNumbers[stepIdx] || "•";
       pin.onclick = next;
       anchor.appendChild(pin);
     }
@@ -3044,11 +3106,13 @@ function bindEvents() {
     }
   });
 
-  // Add Hotspot Step vs Add Intro/Text Screen buttons
+  // Add Hotspot Step vs Add Intro/Text Screen vs Explainer buttons
   document.getElementById('btn-add-step').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'hotspot'));
   document.getElementById('btn-add-step-timeline').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'hotspot'));
   document.getElementById('btn-add-text-step').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'screen'));
   document.getElementById('btn-add-text-timeline').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'screen'));
+  document.getElementById('btn-add-explainer-step').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'screen', { isExplainer: true }));
+  document.getElementById('btn-add-explainer-timeline').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'screen', { isExplainer: true }));
 
   // Step Type Switcher inside Inspector (Hotspot <-> Text Screen)
   document.querySelectorAll('#step-type-switcher .type-pill-btn').forEach(btn => {
@@ -3063,8 +3127,9 @@ function bindEvents() {
       if (nextType === 'screen' && !step.screenLayout) {
         step.screenLayout = 'default';
       }
-      if (nextType === 'hotspot' && step.style === 'modal') {
-        step.style = 'beacon';
+      if (nextType === 'hotspot') {
+        step.isExplainer = false;
+        if (step.style === 'modal') step.style = 'beacon';
       }
       renderEditorStepsList();
       renderInspectorPanel();
@@ -3087,6 +3152,26 @@ function bindEvents() {
       refreshIcons();
     });
   });
+
+  // Explainer-only toggle (not counted as a numbered step)
+  const isExplainerInput = document.getElementById('step-is-explainer');
+  if (isExplainerInput) {
+    isExplainerInput.addEventListener('change', e => {
+      const step = getSelectedStep();
+      if (!step) return;
+      step.isExplainer = Boolean(e.target.checked);
+      if (step.isExplainer && (!step.kicker || step.kicker === 'Product Tour')) {
+        step.kicker = 'Explainer';
+      }
+      renderEditorStepsList();
+      renderInspectorPanel();
+      renderTimelineMarkers();
+      renderHotspotOverlay();
+      if (state.editorMode === 'preview') renderPreviewStepDots();
+      scheduleAutoSave();
+      refreshIcons();
+    });
+  }
 
   const setStepToCurrentVideoTime = () => {
     const step = getSelectedStep();
