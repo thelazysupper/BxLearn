@@ -1773,7 +1773,7 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
   const btnText = step.buttonText || (isLast ? 'Finish' : 'Next');
   const showKicker = step.showKicker !== false;
   const showTitle = step.showTitle !== false;
-  const showBody = step.showBody !== false;
+  const showBody = step.showBody !== false && Boolean(step.body && step.body.trim());
   const showButtons = step.showButtons !== false;
   const showProgress = step.showProgress !== undefined ? Boolean(step.showProgress) : !pos.isExplainer;
 
@@ -1800,7 +1800,7 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
           </div>
         ` : ''}
         ${showProgress ? `
-          <div class="tooltip-progress-bar" style="width:100%; margin-top:16px; margin-bottom:0;">
+          <div class="tooltip-progress-bar" style="width:100%; margin-top:8px; margin-bottom:0;">
             <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
           </div>
         ` : ''}
@@ -2426,12 +2426,13 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       #${widgetId} .bx-anchor { position:absolute; width:0; height:0; pointer-events:auto; }
       #${widgetId} .bx-pin { position:absolute; left:0; top:0; width:28px; height:28px; border-radius:50%; background:#0076DD; border:2.5px solid #FFF; color:#FFF; font-family:'Host Grotesk',sans-serif; font-weight:600; font-size:12px; display:flex; align-items:center; justify-content:center; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 0 0 8px rgba(0,118,221,0.28); animation:bxPulse_${widgetId} 2.2s ease-in-out infinite; }
       #${widgetId} .bx-trace { position:absolute; inset:0; border-radius:8px; border:2.5px solid #0076DD; background:rgba(0,118,221,0.10); box-shadow:0 0 0 4px rgba(0,118,221,0.22); cursor:pointer; animation:bxFadeIn_${widgetId} 0.22s ease-out; }
-      #${widgetId} .bx-tip { position:absolute; width:270px; background:#FFF; border-radius:12px; padding:15px; box-shadow:0 16px 38px rgba(0,24,44,0.24); animation:bxTipIn_${widgetId} 0.24s cubic-bezier(0.16,1,0.3,1); }
-      #${widgetId} .bx-tip h4 { font-family:'Host Grotesk',sans-serif; font-weight:600; color:#00182C; font-size:15px; margin:0 0 5px; }
-      #${widgetId} .bx-tip p { font-family:'Google Sans',sans-serif; color:#324158; font-size:13px; margin:0 0 12px; line-height:1.45; }
+      #${widgetId} .bx-tip { position:absolute; width:270px; background:#FFF; border-radius:12px; padding:16px 17px 14px; display:flex; flex-direction:column; gap:7px; box-shadow:0 16px 38px rgba(0,24,44,0.24); animation:bxTipIn_${widgetId} 0.24s cubic-bezier(0.16,1,0.3,1); }
+      #${widgetId} .bx-tip h4 { font-family:'Host Grotesk',sans-serif; font-weight:600; color:#00182C; font-size:15px; line-height:1.3; margin:0; }
+      #${widgetId} .bx-tip p { font-family:'Google Sans',sans-serif; color:#324158; font-size:13px; margin:0; line-height:1.48; }
+      #${widgetId} .bx-tip .bx-btn { align-self:flex-start; margin-top:5px; }
       #${widgetId} .bx-screen { position:absolute; inset:0; background:rgba(0,24,44,0.78); display:flex; align-items:center; justify-content:center; padding:24px; pointer-events:auto; animation:bxFadeIn_${widgetId} 0.22s ease-out; }
       #${widgetId} .bx-stage.is-split .bx-screen { padding:0; background:transparent; }
-      #${widgetId} .bx-screen-card { max-width:440px; width:100%; background:#FFF; border-radius:16px; padding:30px; text-align:center; box-shadow:0 24px 52px rgba(0,24,44,0.28); box-sizing:border-box; animation:bxTipIn_${widgetId} 0.26s cubic-bezier(0.16,1,0.3,1); }
+      #${widgetId} .bx-screen-card { max-width:440px; width:100%; background:#FFF; border-radius:16px; padding:30px 34px 26px; display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; box-shadow:0 24px 52px rgba(0,24,44,0.28); box-sizing:border-box; animation:bxTipIn_${widgetId} 0.26s cubic-bezier(0.16,1,0.3,1); }
       #${widgetId} .bx-img.is-entering { animation:bxFadeIn_${widgetId} 0.22s ease-out; }
       @keyframes bxPulse_${widgetId} { 0%, 100% { box-shadow:0 0 0 6px rgba(0,118,221,0.28); } 50% { box-shadow:0 0 0 12px rgba(0,118,221,0.10); } }
       @keyframes bxFadeIn_${widgetId} { from { opacity:0; } to { opacity:1; } }
@@ -2536,7 +2537,7 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
     const isSplit = isScreen && s.screenLayout === "split";
     const showKicker = s.showKicker !== false;
     const showTitle = s.showTitle !== false;
-    const showBody = s.showBody !== false;
+    const showBody = s.showBody !== false && Boolean(s.body && s.body.trim());
     const showButtons = s.showButtons !== false;
     stage.classList.toggle("is-split", isSplit);
 
@@ -2546,7 +2547,7 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       if (isScreen) {
         const scr = document.createElement("div");
         scr.className = "bx-screen";
-        scr.innerHTML = \`<div class="bx-screen-card">\${showKicker && s.kicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;background:rgba(0,118,221,0.1);padding:4px 10px;border-radius:99px;display:inline-block;margin-bottom:10px;">\${s.kicker}</div>\` : ''}\${showTitle ? \`<h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;margin:0 0 8px;">\${s.title}</h3>\` : ''}\${showBody ? \`<p style="font-size:14px;color:#324158;margin:0 0 18px;line-height:1.5;">\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Continue'}</button>\` : ''}</div>\`;
+        scr.innerHTML = \`<div class="bx-screen-card">\${showKicker && s.kicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;background:rgba(0,118,221,0.1);padding:4px 12px;border-radius:99px;display:inline-block;margin-bottom:2px;">\${s.kicker}</div>\` : ''}\${showTitle ? \`<h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;line-height:1.25;margin:0;">\${s.title}</h3>\` : ''}\${showBody ? \`<p style="font-size:14px;color:#324158;margin:0;max-width:38ch;line-height:1.55;">\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn" style="margin-top:8px;">\${s.buttonText || 'Continue'}</button>\` : ''}</div>\`;
         const btnEl = scr.querySelector("button");
         if (btnEl) btnEl.onclick = next;
         screenOverlay.appendChild(scr);

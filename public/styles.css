@@ -1464,7 +1464,10 @@ svg.lucide {
   background: #FFFFFF;
   border-radius: 12px;
   box-shadow: 0 16px 40px rgba(0, 24, 44, 0.22), 0 0 0 1px rgba(0, 24, 44, 0.07);
-  padding: 15px 16px;
+  padding: 16px 17px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
   z-index: 15;
   cursor: default;
   animation: smoothPopIn 0.2s var(--ease-out);
@@ -1615,7 +1618,7 @@ svg.lucide {
   background: var(--bg-subtle);
   border-radius: 99px;
   overflow: hidden;
-  margin-top: 12px;
+  margin-top: 6px;
   margin-bottom: 0;
 }
 
@@ -1630,7 +1633,7 @@ svg.lucide {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 
 .tooltip-step-counter {
@@ -1645,8 +1648,9 @@ svg.lucide {
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: 15px;
+  line-height: 1.3;
   color: var(--heading-color);
-  margin-bottom: 5px;
+  margin-bottom: 0;
 }
 
 .tooltip-body {
@@ -1654,7 +1658,7 @@ svg.lucide {
   font-weight: 400;
   font-size: 12.8px;
   color: var(--body-color);
-  margin-bottom: 13px;
+  margin-bottom: 0;
   line-height: 1.48;
 }
 
@@ -1663,6 +1667,7 @@ svg.lucide {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin-top: 5px;
 }
 
 /* =========================================================
@@ -1704,12 +1709,13 @@ svg.lucide {
   width: 100%;
   background: #FFFFFF;
   border-radius: 16px;
-  padding: 32px 34px;
+  padding: 30px 34px 24px;
   text-align: center;
   box-shadow: 0 24px 56px rgba(0, 24, 44, 0.28), 0 0 0 1px rgba(0, 24, 44, 0.06);
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 12px;
   animation: cardSlideUp 0.32s var(--ease-out);
 }
 
@@ -1735,7 +1741,7 @@ svg.lucide {
   background: var(--primary-soft);
   padding: 4px 12px;
   border-radius: 99px;
-  margin-bottom: 14px;
+  margin-bottom: 2px;
 }
 
 .text-screen-title {
@@ -1743,7 +1749,7 @@ svg.lucide {
   font-weight: 600;
   font-size: 23px;
   color: var(--heading-color);
-  margin-bottom: 10px;
+  margin-bottom: 0;
   line-height: 1.25;
 }
 
@@ -1752,7 +1758,8 @@ svg.lucide {
   font-weight: 400;
   font-size: 14px;
   color: var(--body-color);
-  margin-bottom: 22px;
+  margin-bottom: 0;
+  max-width: 38ch;
   line-height: 1.55;
 }
 
@@ -1762,6 +1769,7 @@ svg.lucide {
   justify-content: center;
   gap: 10px;
   width: 100%;
+  margin-top: 8px;
 }
 
 .text-screen-btn-primary {
