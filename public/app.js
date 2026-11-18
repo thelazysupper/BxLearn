@@ -70,6 +70,19 @@ function showToast(message) {
 // centered at the exact aspect ratio of the current video or
 // screenshot (vertical or horizontal) with rounded corners.
 // =========================================================
+function getActiveStageStep() {
+  if (!state.activeDemo || !Array.isArray(state.activeDemo.steps)) return null;
+  if (state.editorMode === 'edit') {
+    return getSelectedStep();
+  }
+  if (!state.previewWaitingForClick) return null;
+  return state.activeDemo.steps[state.previewStepIndex] || null;
+}
+
+function isStepSplitLayout(step) {
+  return Boolean(step && getStepType(step) === 'screen' && step.screenLayout === 'split');
+}
+
 function syncViewportSize() {
   const wrap = document.getElementById('stage-viewport-wrap');
   const backdrop = document.getElementById('stage-backdrop-frame');
@@ -95,14 +108,19 @@ function syncViewportSize() {
   outerW = Math.floor(outerW);
   outerH = Math.floor(outerH);
 
+  const stageStep = getActiveStageStep();
+  const isSplit = isStepSplitLayout(stageStep);
+
   if (backdrop) {
     backdrop.style.width = `${outerW}px`;
     backdrop.style.height = `${outerH}px`;
+    backdrop.classList.toggle('is-split-layout', isSplit);
   }
 
-  // 2. Fit inner screen (#video-viewport) centered inside the backdrop with breathing room
-  const innerPad = Math.max(24, Math.round(Math.min(outerW, outerH) * 0.065));
-  const availW = Math.max(120, outerW - innerPad * 2);
+  // 2. Fit inner screen (#video-viewport) centered inside the backdrop (or left 50% column in 50/50 Split mode)
+  const paneW = isSplit ? Math.floor(outerW / 2) : outerW;
+  const innerPad = Math.max(20, Math.round(Math.min(paneW, outerH) * 0.065));
+  const availW = Math.max(100, paneW - innerPad * 2);
   const availH = Math.max(100, outerH - innerPad * 2);
   const mediaRatio = state.videoAspectRatio || (16 / 9);
 
@@ -1353,6 +1371,10 @@ function renderInspectorPanel() {
   document.getElementById('step-style-select').value = ['ring', 'trace'].includes(step.style) ? step.style : 'beacon';
   const showTipEl = document.getElementById('step-show-tooltip');
   if (showTipEl) showTipEl.checked = step.showTooltip !== false;
+  const screenLayout = step.screenLayout === 'split' ? 'split' : 'default';
+  document.querySelectorAll('#step-screen-layout-switcher .type-pill-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.screenLayout === screenLayout);
+  });
   document.getElementById('step-backdrop-select').value = step.backdrop || 'blur';
   document.getElementById('step-btn-text-input').value = step.buttonText || 'Next';
   document.getElementById('coord-x-val').textContent = `${Math.round(step.x)}%`;
@@ -1421,16 +1443,28 @@ function resolvePlacementClass(step) {
 
 function renderHotspotOverlay() {
   const overlay = document.getElementById('hotspot-overlay');
+  const screenOverlay = document.getElementById('stage-screen-overlay');
   if (!overlay || !state.activeDemo) return;
   overlay.innerHTML = '';
+  if (screenOverlay) {
+    screenOverlay.innerHTML = '';
+    screenOverlay.classList.add('hidden');
+  }
 
   const steps = state.activeDemo.steps || [];
-  if (steps.length === 0) return;
+  if (steps.length === 0) {
+    syncViewportSize();
+    return;
+  }
 
   if (state.editorMode === 'edit') {
     const step = getSelectedStep();
-    if (!step) return;
+    if (!step) {
+      syncViewportSize();
+      return;
+    }
     syncStageMediaForStep(step);
+    syncViewportSize();
     const stepIdx = steps.findIndex(s => s.id === step.id);
     renderStepOnStage(overlay, step, stepIdx, steps.length, false);
   } else {
@@ -1438,14 +1472,20 @@ function renderHotspotOverlay() {
     if (!state.previewWaitingForClick) {
       // Playing video between steps -> ensure video/canvas is visible, not a static screenshot
       syncStageMediaForStep(null);
+      syncViewportSize();
       return;
     }
-    if (!step) return;
+    if (!step) {
+      syncViewportSize();
+      return;
+    }
     syncStageMediaForStep(step);
+    syncViewportSize();
     renderStepOnStage(overlay, step, state.previewStepIndex, steps.length, true);
   }
 
   refreshIcons(overlay);
+  if (screenOverlay) refreshIcons(screenOverlay);
 }
 
 function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
@@ -1454,8 +1494,10 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
   const isLast = stepIndex === totalSteps - 1;
   const btnText = step.buttonText || (isLast ? 'Finish' : 'Next');
 
-  // CASE 1: INTRO / CHAPTER / OUTRO TEXT SCREEN
+  // CASE 1: INTRO / CHAPTER / OUTRO TEXT SCREEN (Default Full-Stage OR 50/50 Split)
   if (stepType === 'screen') {
+    const screenOverlay = document.getElementById('stage-screen-overlay') || overlay;
+    screenOverlay.classList.remove('hidden');
     const backdropMode = step.backdrop || 'blur';
     const screenEl = document.createElement('div');
     screenEl.className = `demo-text-screen backdrop-${backdropMode}`;
@@ -1480,7 +1522,7 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     screenEl.addEventListener('pointerdown', e => e.stopPropagation());
     screenEl.addEventListener('click', e => e.stopPropagation());
     bindStepCardNavigation(screenEl, stepIndex, totalSteps, isPreview);
-    overlay.appendChild(screenEl);
+    screenOverlay.appendChild(screenEl);
     return;
   }
 
@@ -1805,6 +1847,7 @@ function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot') {
   const newStep = {
     id: `step-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
     type: isScreen ? 'screen' : 'hotspot',
+    screenLayout: 'default',
     backdrop: 'blur',
     kicker: isScreen ? (timestamp === 0 ? 'Welcome • Product Tour' : `Chapter ${stepNum}`) : '',
     timestamp,
@@ -1997,31 +2040,41 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
   root.innerHTML = \`
     <style>
       #${widgetId} .bx-wrap { background:#00182C; border-radius:16px; overflow:hidden; box-shadow:0 18px 44px rgba(0,24,44,0.18); position:relative; }
-      #${widgetId} .bx-stage { position:relative; aspect-ratio:16/9; width:100%; background:radial-gradient(circle at 50% 18%, #0B2B4C 0%, #00182C 100%); display:flex; align-items:center; justify-content:center; padding:3.2%; box-sizing:border-box; overflow:hidden; }
+      #${widgetId} .bx-stage { position:relative; aspect-ratio:16/9; width:100%; background:radial-gradient(circle at 50% 18%, #0B2B4C 0%, #00182C 100%); display:flex; align-items:center; justify-content:center; box-sizing:border-box; overflow:hidden; }
+      #${widgetId} .bx-stage.is-split { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:minmax(0,1fr); align-items:stretch; }
+      #${widgetId} .bx-media-pane { width:100%; height:100%; min-width:0; min-height:0; display:flex; align-items:center; justify-content:center; position:relative; }
+      #${widgetId} .bx-stage.is-split .bx-media-pane { border-right:1px solid rgba(255,255,255,0.1); }
       #${widgetId} .bx-screen-inner { position:relative; width:100%; height:100%; border-radius:12px; box-shadow:0 16px 40px rgba(0,10,22,0.42), 0 0 0 1px rgba(255,255,255,0.14); overflow:visible; }
       #${widgetId} .bx-media-clip { position:absolute; inset:0; border-radius:inherit; overflow:hidden; background:#00101F; }
       #${widgetId} video, #${widgetId} .bx-img { width:100%; height:100%; display:block; object-fit:fill; }
       #${widgetId} .bx-overlay { position:absolute; inset:0; pointer-events:none; }
+      #${widgetId} .bx-screen-overlay { position:absolute; inset:0; pointer-events:none; z-index:18; }
+      #${widgetId} .bx-stage.is-split .bx-screen-overlay { position:relative; inset:auto; width:100%; height:100%; min-width:0; min-height:0; }
       #${widgetId} .bx-anchor { position:absolute; width:0; height:0; pointer-events:auto; }
       #${widgetId} .bx-pin { position:absolute; left:0; top:0; width:28px; height:28px; border-radius:50%; background:#0076DD; border:2.5px solid #FFF; color:#FFF; font-family:'Host Grotesk',sans-serif; font-weight:600; font-size:12px; display:flex; align-items:center; justify-content:center; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 0 0 8px rgba(0,118,221,0.28); }
       #${widgetId} .bx-trace { position:absolute; inset:0; border-radius:8px; border:2.5px solid #0076DD; background:rgba(0,118,221,0.10); box-shadow:0 0 0 4px rgba(0,118,221,0.22); cursor:pointer; }
       #${widgetId} .bx-tip { position:absolute; width:270px; background:#FFF; border-radius:12px; padding:15px; box-shadow:0 16px 38px rgba(0,24,44,0.24); }
       #${widgetId} .bx-tip h4 { font-family:'Host Grotesk',sans-serif; font-weight:600; color:#00182C; font-size:15px; margin:0 0 5px; }
       #${widgetId} .bx-tip p { font-family:'Google Sans',sans-serif; color:#324158; font-size:13px; margin:0 0 12px; line-height:1.45; }
-      #${widgetId} .bx-screen { position:absolute; inset:0; border-radius:12px; background:rgba(0,24,44,0.78); display:flex; align-items:center; justify-content:center; padding:24px; pointer-events:auto; }
-      #${widgetId} .bx-screen-card { max-width:440px; width:100%; background:#FFF; border-radius:16px; padding:30px; text-align:center; box-shadow:0 24px 52px rgba(0,24,44,0.28); }
+      #${widgetId} .bx-screen { position:absolute; inset:0; background:rgba(0,24,44,0.78); display:flex; align-items:center; justify-content:center; padding:24px; pointer-events:auto; }
+      #${widgetId} .bx-stage.is-split .bx-screen { padding:18px; }
+      #${widgetId} .bx-screen-card { max-width:440px; width:100%; background:#FFF; border-radius:16px; padding:30px; text-align:center; box-shadow:0 24px 52px rgba(0,24,44,0.28); box-sizing:border-box; }
+      #${widgetId} .bx-stage.is-split .bx-screen-card { max-width:100%; height:100%; padding:24px; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; text-align:left; overflow-y:auto; }
       #${widgetId} .bx-btn { background:#0076DD; color:#FFF; border:none; border-radius:7px; padding:8px 16px; font-family:'Host Grotesk',sans-serif; font-weight:600; font-size:13px; cursor:pointer; }
       #${widgetId} .bx-bar { background:#FFF; border-top:1px solid #E2E8F0; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; }
     </style>
     <div class="bx-wrap">
       <div class="bx-stage">
-        <div class="bx-screen-inner">
-          <div class="bx-media-clip">
-            <video playsinline preload="metadata" src="\${demo.videoUrl}"></video>
-            <img class="bx-img" style="display:none;" alt="" />
+        <div class="bx-media-pane">
+          <div class="bx-screen-inner">
+            <div class="bx-media-clip">
+              <video playsinline preload="metadata" src="\${demo.videoUrl}"></video>
+              <img class="bx-img" style="display:none;" alt="" />
+            </div>
+            <div class="bx-overlay"></div>
           </div>
-          <div class="bx-overlay"></div>
         </div>
+        <div class="bx-screen-overlay"></div>
       </div>
       <div class="bx-bar">
         <strong style="font-family:'Host Grotesk',sans-serif; color:#00182C; font-size:14px;">\${demo.title}</strong>
@@ -2033,13 +2086,16 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
   const video = root.querySelector("video");
   const img = root.querySelector(".bx-img");
   const overlay = root.querySelector(".bx-overlay");
+  const screenOverlay = root.querySelector(".bx-screen-overlay");
   const dots = root.querySelector(".bx-dots");
   let mediaRatio = 16 / 9;
 
   function fitInner() {
     if (!stage || !inner) return;
-    const sw = stage.clientWidth * 0.92;
-    const sh = stage.clientHeight * 0.90;
+    const isSplit = stage.classList.contains("is-split");
+    const paneW = isSplit ? (stage.clientWidth / 2) : stage.clientWidth;
+    const sw = paneW * 0.88;
+    const sh = stage.clientHeight * 0.88;
     if (!sw || !sh) return;
     let w = sw, h = w / mediaRatio;
     if (h > sh) { h = sh; w = h * mediaRatio; }
@@ -2062,6 +2118,7 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
 
   function render() {
     overlay.innerHTML = "";
+    screenOverlay.innerHTML = "";
     dots.innerHTML = "";
     demo.steps.forEach((s, i) => {
       const b = document.createElement("button");
@@ -2070,8 +2127,15 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       b.onclick = () => jump(i);
       dots.appendChild(b);
     });
-    if (!waiting || !demo.steps[stepIdx]) return;
+    if (!waiting || !demo.steps[stepIdx]) {
+      stage.classList.remove("is-split");
+      fitInner();
+      return;
+    }
     const s = demo.steps[stepIdx];
+    const isScreen = (s.type === "screen" || s.style === "modal");
+    const isSplit = isScreen && s.screenLayout === "split";
+    stage.classList.toggle("is-split", isSplit);
     if (s.imageUrl) {
       video.style.display = "none";
       img.style.display = "block";
@@ -2080,12 +2144,13 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       img.style.display = "none";
       video.style.display = "block";
     }
-    if (s.type === "screen" || s.style === "modal") {
+    fitInner();
+    if (isScreen) {
       const scr = document.createElement("div");
       scr.className = "bx-screen";
       scr.innerHTML = \`<div class="bx-screen-card"><h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;margin:0 0 8px;">\${s.title}</h3><p style="font-size:14px;color:#324158;margin:0 0 18px;line-height:1.5;">\${s.body}</p><button class="bx-btn">\${s.buttonText || 'Continue'}</button></div>\`;
       scr.querySelector("button").onclick = next;
-      overlay.appendChild(scr);
+      screenOverlay.appendChild(scr);
       return;
     }
     const anchor = document.createElement("div");
@@ -2187,6 +2252,7 @@ function generateHubWebflowSnippet() {
     if (!visibleDemos.includes(activeDemo)) activeDemo = visibleDemos[0] || null;
     const step = activeDemo && activeDemo.steps ? activeDemo.steps[stepIdx] : null;
     const isScreen = step && (step.type === "screen" || step.style === "modal");
+    const isSplit = isScreen && step.screenLayout === "split";
 
     hub.innerHTML = \`
       <aside style="background:#F8FAFC; border-right:1px solid #E2E8F0; padding:18px 12px;">
@@ -2202,13 +2268,15 @@ function generateHubWebflowSnippet() {
           \${visibleDemos.map(d => \`<button data-d="\${d.id}" style="padding:6px 12px;border-radius:99px;border:1px solid \${activeDemo&&activeDemo.id===d.id?'#0076DD':'#CBD5E1'};background:\${activeDemo&&activeDemo.id===d.id?'#0076DD':'#FFF'};color:\${activeDemo&&activeDemo.id===d.id?'#FFF':'#00182C'};font-family:'Host Grotesk',sans-serif;font-weight:600;font-size:12.5px;cursor:pointer;">\${d.title}</button>\`).join('')}
         </div>
         \${activeDemo ? \`
-          <div style="position:relative; aspect-ratio:16/9; background:#00182C; border-radius:12px; overflow:hidden;">
-            \${step && step.imageUrl ? \`<img src="\${step.imageUrl}" alt="" style="width:100%;height:100%;object-fit:fill;display:block;" />\` : \`<video id="bx-hub-video" src="\${activeDemo.videoUrl || ''}" playsinline style="width:100%;height:100%;object-fit:fill;"></video>\`}
+          <div style="position:relative; aspect-ratio:16/9; background:radial-gradient(circle at 50% 18%, #0B2B4C 0%, #00182C 100%); border-radius:12px; overflow:hidden;\${isSplit ? ' display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:minmax(0,1fr); align-items:stretch;' : ''}">
+            <div style="width:100%;height:100%;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;padding:\${isSplit ? '16px' : '0'};box-sizing:border-box;\${isSplit ? 'border-right:1px solid rgba(255,255,255,0.1);' : ''}">
+              \${step && step.imageUrl ? \`<img src="\${step.imageUrl}" alt="" style="max-width:100%;max-height:100%;width:\${isSplit ? 'auto' : '100%'};height:\${isSplit ? 'auto' : '100%'};object-fit:\${isSplit ? 'contain' : 'fill'};border-radius:\${isSplit ? '10px' : '0'};display:block;box-shadow:\${isSplit ? '0 12px 30px rgba(0,10,22,0.4)' : 'none'};" />\` : \`<video id="bx-hub-video" src="\${activeDemo.videoUrl || ''}" playsinline style="max-width:100%;max-height:100%;width:\${isSplit ? 'auto' : '100%'};height:\${isSplit ? 'auto' : '100%'};object-fit:\${isSplit ? 'contain' : 'fill'};border-radius:\${isSplit ? '10px' : '0'};"></video>\`}
+            </div>
             \${step ? (isScreen ? \`
-              <div style="position:absolute;inset:0;background:rgba(0,24,44,0.78);display:flex;align-items:center;justify-content:center;padding:20px;">
-                <div style="background:#FFF;padding:28px;border-radius:14px;max-width:420px;text-align:center;box-shadow:0 20px 44px rgba(0,24,44,0.26);">
+              <div style="\${isSplit ? 'position:relative;min-width:0;min-height:0;padding:18px;' : 'position:absolute;inset:0;padding:20px;'}background:rgba(0,24,44,0.78);display:flex;align-items:center;justify-content:center;box-sizing:border-box;">
+                <div style="background:#FFF;padding:\${isSplit ? '24px' : '28px'};border-radius:14px;\${isSplit ? 'width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;text-align:left;box-sizing:border-box;overflow-y:auto;' : 'max-width:420px;text-align:center;'}box-shadow:0 20px 44px rgba(0,24,44,0.26);">
                   <div style="font-family:'Host Grotesk',sans-serif;font-weight:600;color:#00182C;font-size:20px;margin-bottom:8px;">\${step.title}</div>
-                  <div style="font-size:13.5px;color:#324158;margin-bottom:16px;">\${step.body}</div>
+                  <div style="font-size:13.5px;color:#324158;margin-bottom:16px;line-height:1.5;">\${step.body}</div>
                   <button id="bx-hub-next" style="background:#0076DD;color:#FFF;border:none;padding:8px 18px;border-radius:7px;font-weight:600;cursor:pointer;">\${step.buttonText || 'Continue'}</button>
                 </div>
               </div>
@@ -2992,12 +3060,28 @@ function bindEvents() {
       if (nextType === 'screen' && !step.kicker) {
         step.kicker = 'Product Tour';
       }
+      if (nextType === 'screen' && !step.screenLayout) {
+        step.screenLayout = 'default';
+      }
       if (nextType === 'hotspot' && step.style === 'modal') {
         step.style = 'beacon';
       }
       renderEditorStepsList();
       renderInspectorPanel();
       renderTimelineMarkers();
+      renderHotspotOverlay();
+      scheduleAutoSave();
+      refreshIcons();
+    });
+  });
+
+  // Text Screen Layout Switcher (Default Full vs 50/50 Split)
+  document.querySelectorAll('#step-screen-layout-switcher .type-pill-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const step = getSelectedStep();
+      if (!step) return;
+      step.screenLayout = btn.dataset.screenLayout === 'split' ? 'split' : 'default';
+      renderInspectorPanel();
       renderHotspotOverlay();
       scheduleAutoSave();
       refreshIcons();

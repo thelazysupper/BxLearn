@@ -221,16 +221,21 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
           <!-- Constant 16:9 Backdrop Frame + Centered Aspect-Ratio Screen -->
           <div id="stage-viewport-wrap" class="stage-viewport-wrap">
             <div id="stage-backdrop-frame" class="stage-backdrop-frame">
-              <div id="video-viewport" class="video-viewport">
-                <div class="viewport-media-clip">
-                  <video id="demo-video" playsinline preload="metadata" crossorigin="anonymous"></video>
-                  <canvas id="sample-video-canvas" width="1280" height="720" class="sample-video-canvas hidden"></canvas>
-                  <img id="demo-step-image" class="demo-step-image hidden" alt="" draggable="false" />
-                </div>
+              <div id="stage-media-pane" class="stage-media-pane">
+                <div id="video-viewport" class="video-viewport">
+                  <div class="viewport-media-clip">
+                    <video id="demo-video" playsinline preload="metadata" crossorigin="anonymous"></video>
+                    <canvas id="sample-video-canvas" width="1280" height="720" class="sample-video-canvas hidden"></canvas>
+                    <img id="demo-step-image" class="demo-step-image hidden" alt="" draggable="false" />
+                  </div>
 
-                <!-- Hotspot & Intro/Text Screen Overlay Layer (Locked 1:1 to Media Frame) -->
-                <div id="hotspot-overlay" class="hotspot-overlay edit-cursor"></div>
+                  <!-- Hotspot & Button Trace Overlay Layer (Locked 1:1 to Media Frame) -->
+                  <div id="hotspot-overlay" class="hotspot-overlay edit-cursor"></div>
+                </div>
               </div>
+
+              <!-- Full-Stage Text Screen & 50/50 Split Text Column -->
+              <div id="stage-screen-overlay" class="stage-screen-overlay hidden"></div>
             </div>
           </div>
 
@@ -432,13 +437,29 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
           </div>
 
           <!-- Text Screen-only controls -->
-          <div id="screen-only-fields" class="form-group hidden">
-            <label for="step-backdrop-select">Screen Backdrop</label>
-            <select id="step-backdrop-select">
-              <option value="blur">Blurred Video</option>
-              <option value="dark">Dark Navy (#00182C)</option>
-              <option value="light">Minimal Light</option>
-            </select>
+          <div id="screen-only-fields" class="form-group hidden" style="gap: 10px;">
+            <div class="form-group">
+              <label>Text Screen Layout</label>
+              <div class="type-pill-group" id="step-screen-layout-switcher">
+                <button type="button" class="type-pill-btn active" data-screen-layout="default">
+                  <i data-lucide="layout-template"></i>
+                  <span>Default (Full)</span>
+                </button>
+                <button type="button" class="type-pill-btn" data-screen-layout="split">
+                  <i data-lucide="columns-2"></i>
+                  <span>50/50 Split</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="step-backdrop-select">Screen Backdrop</label>
+              <select id="step-backdrop-select">
+                <option value="blur">Blurred Media</option>
+                <option value="dark">Dark Navy (#00182C)</option>
+                <option value="light">Minimal Light</option>
+              </select>
+            </div>
           </div>
 
           <div class="form-group">

@@ -1013,6 +1013,66 @@ svg.lucide {
   overflow: visible;
 }
 
+.stage-media-pane {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.stage-screen-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+/* 50/50 Split Variant: Left 50% Screenshot/Video, Right 50% Text Screen */
+.stage-backdrop-frame.is-split-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.stage-backdrop-frame.is-split-layout .stage-media-pane {
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stage-backdrop-frame.is-split-layout .stage-screen-overlay {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 0;
+}
+
+.stage-backdrop-frame.is-split-layout .demo-text-screen {
+  padding: 20px;
+}
+
+.stage-backdrop-frame.is-split-layout .text-screen-card {
+  max-width: 100%;
+  height: 100%;
+  justify-content: center;
+  align-items: flex-start;
+  text-align: left;
+  padding: 24px 26px;
+  overflow-y: auto;
+}
+
+.stage-backdrop-frame.is-split-layout .text-screen-actions {
+  justify-content: flex-start;
+}
+
 /* Inner screen centered on the backdrop with its own aspect ratio & corner radius */
 .video-viewport {
   position: relative;
