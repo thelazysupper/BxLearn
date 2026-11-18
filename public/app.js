@@ -513,9 +513,19 @@ async function apiUploadVideo(demoId, file) {
   }
 }
 
+function getWebflowConfig() {
+  try {
+    return {
+      apiToken: (localStorage.getItem(WF_TOKEN_STORAGE_KEY) || '').trim(),
+      siteId: (localStorage.getItem(WF_SITE_ID_STORAGE_KEY) || '').trim()
+    };
+  } catch (e) {
+    return { apiToken: '', siteId: '' };
+  }
+}
+
 async function webflowUploadAsset(file) {
-  const token = state.wfConfig?.apiToken?.trim();
-  const siteId = state.wfConfig?.siteId?.trim();
+  const { apiToken: token, siteId } = getWebflowConfig();
   if (!token || !siteId) return null;
 
   const base = getAppBasePath();
@@ -2793,13 +2803,15 @@ function updateWebflowCodeOutput() {
   const hasBase64 = demosToCheck.some(d => (d.steps || []).some(s => s && typeof s.imageUrl === 'string' && s.imageUrl.startsWith('data:image/')));
   if (warningEl) warningEl.classList.toggle('hidden', !hasBase64);
   if (uploadBase64Btn) {
-    const hasWf = Boolean(state.wfConfig?.apiToken && state.wfConfig?.siteId);
+    const wfCfg = getWebflowConfig();
+    const hasWf = Boolean(wfCfg.apiToken && wfCfg.siteId);
     uploadBase64Btn.classList.toggle('hidden', !hasWf);
   }
 }
 
 async function convertBase64ScreenshotsToWebflow() {
-  if (!state.wfConfig?.apiToken || !state.wfConfig?.siteId) {
+  const wfCfg = getWebflowConfig();
+  if (!wfCfg.apiToken || !wfCfg.siteId) {
     showToast('Connect Webflow Assets first');
     return;
   }
@@ -4170,6 +4182,70 @@ async function loadWebflowSiteAssets(siteId, token) {
 
   setWfAssetsStatus(`Connected — loaded ${wfAssetsState.assets.length} asset(s) from Webflow.`, 'connected');
   renderWebflowAssetsGrid();
+  syncExistingDemosToWebflowAssets().catch(() => {});
+}
+
+let isSyncingExistingDemos = false;
+async function syncExistingDemosToWebflowAssets() {
+  if (isSyncingExistingDemos) return;
+  const wfCfg = getWebflowConfig();
+  if (!wfCfg.apiToken || !wfCfg.siteId) return;
+
+  isSyncingExistingDemos = true;
+  try {
+    const urlCache = new Map();
+    let totalConverted = 0;
+
+    const allDemos = [...(state.demos || [])];
+    if (state.activeDemo && !allDemos.some(d => d.id === state.activeDemo.id)) {
+      allDemos.push(state.activeDemo);
+    }
+
+    for (const demo of allDemos) {
+      let changed = false;
+      for (const step of (demo.steps || [])) {
+        if (!step || typeof step.imageUrl !== 'string' || !step.imageUrl.startsWith('data:image/')) continue;
+        const raw = step.imageUrl;
+        let hostedUrl = urlCache.get(raw);
+        if (!hostedUrl) {
+          try {
+            const blob = await (await fetch(raw)).blob();
+            const ext = (blob.type && blob.type.split('/')[1]) || 'png';
+            const file = new File([blob], step.imageName || `step-${step.id}.${ext}`, { type: blob.type || 'image/png' });
+            const uploaded = await webflowUploadAsset(file);
+            if (uploaded && uploaded.imageUrl) {
+              hostedUrl = uploaded.imageUrl;
+              urlCache.set(raw, hostedUrl);
+            }
+          } catch {}
+        }
+        if (hostedUrl) {
+          step.imageUrl = hostedUrl;
+          changed = true;
+          totalConverted += 1;
+        }
+      }
+
+      if (changed) {
+        if (state.activeDemo && state.activeDemo.id === demo.id) {
+          state.activeDemo.steps = demo.steps;
+        }
+        await apiUpdateDemo(demo);
+      }
+    }
+
+    if (totalConverted > 0) {
+      if (state.currentView === 'editor') {
+        renderEditorStepsList();
+        renderHotspotOverlay();
+      } else {
+        renderLibraryView();
+      }
+      showToast(`Connected ${totalConverted} existing screenshot(s) to Webflow Assets`);
+    }
+  } finally {
+    isSyncingExistingDemos = false;
+  }
 }
 
 function getWebflowAssetUrl(asset) {
@@ -4536,7 +4612,8 @@ async function copySharePreviewUrl() {
   if (!state.activeDemo) return;
 
   // Auto-upload any remaining base64 screenshots to Webflow Assets if connected
-  const hasWf = Boolean(state.wfConfig?.apiToken && state.wfConfig?.siteId);
+  const wfCfg = getWebflowConfig();
+  const hasWf = Boolean(wfCfg.apiToken && wfCfg.siteId);
   const base64Steps = (state.activeDemo.steps || []).filter(
     s => s && typeof s.imageUrl === 'string' && s.imageUrl.startsWith('data:image/')
   );
@@ -4700,6 +4777,7 @@ function bindAuthEvents() {
   }
 
   renderLibraryView();
+  syncExistingDemosToWebflowAssets().catch(() => {});
 
   const data = await apiFetchWorkspace();
   if (data && Array.isArray(data.folders) && Array.isArray(data.demos)) {
@@ -4715,5 +4793,6 @@ function bindAuthEvents() {
     if (state.currentView === 'library') {
       renderLibraryView();
     }
+    syncExistingDemosToWebflowAssets().catch(() => {});
   }
 })();
