@@ -894,6 +894,26 @@ svg.lucide {
   flex-shrink: 0;
 }
 
+.step-dup-btn {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity 0.14s var(--ease-out), background 0.14s, color 0.14s;
+}
+
+.step-dup-btn svg.lucide {
+  width: 12.5px;
+  height: 12.5px;
+}
+
+.step-card:hover .step-dup-btn,
+.step-card.active .step-dup-btn,
+.step-dup-btn:focus-visible {
+  opacity: 1;
+}
+
 .steps-sidebar-footer {
   padding: 10px;
   border-top: 1px solid var(--border-color);

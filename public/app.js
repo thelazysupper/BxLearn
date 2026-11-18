@@ -1346,6 +1346,29 @@ function setEditorMode(mode) {
   refreshIcons();
 }
 
+function duplicateStep(stepId) {
+  if (!state.activeDemo || !Array.isArray(state.activeDemo.steps)) return;
+  const idx = state.activeDemo.steps.findIndex(s => s.id === stepId);
+  if (idx === -1) return;
+
+  const original = state.activeDemo.steps[idx];
+  const cloned = {
+    ...original,
+    id: `step-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`
+  };
+  state.activeDemo.steps.splice(idx + 1, 0, cloned);
+  state.selectedStepId = cloned.id;
+
+  renderEditorStepsList();
+  renderInspectorPanel();
+  renderTimelineMarkers();
+  renderHotspotOverlay();
+  if (state.editorMode === 'preview') renderPreviewStepDots();
+  scheduleAutoSave();
+  refreshIcons();
+  showToast(isStepExplainer(cloned) ? 'Duplicated explainer' : 'Duplicated step');
+}
+
 function getSelectedStep() {
   if (!state.activeDemo || !Array.isArray(state.activeDemo.steps)) return null;
   return state.activeDemo.steps.find(s => s.id === state.selectedStepId) || null;
@@ -1375,7 +1398,17 @@ function renderEditorStepsList() {
         <div class="step-card-title">${escapeHtml(step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`))}</div>
         <span class="step-time-pill">${escapeHtml(metaLabel)}</span>
       </div>
+      <button type="button" class="icon-btn step-dup-btn" data-dup-step="${step.id}" title="Duplicate">
+        <i data-lucide="copy"></i>
+      </button>
     `;
+    const dupBtn = card.querySelector('.step-dup-btn');
+    if (dupBtn) {
+      dupBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        duplicateStep(step.id);
+      });
+    }
     card.addEventListener('click', () => {
       state.selectedStepId = step.id;
       mediaPause();
