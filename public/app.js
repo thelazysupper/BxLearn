@@ -3257,8 +3257,17 @@ function bindEvents() {
   });
   document.getElementById('btn-preview-next').addEventListener('click', () => advancePreviewStep());
   document.getElementById('btn-preview-fullscreen').addEventListener('click', () => {
-    const viewport = document.getElementById('video-viewport');
-    if (viewport.requestFullscreen) viewport.requestFullscreen();
+    const stageWrap = document.getElementById('stage-viewport-wrap');
+    if (!stageWrap) return;
+    if (document.fullscreenElement) {
+      if (document.exitFullscreen) document.exitFullscreen();
+    } else if (stageWrap.requestFullscreen) {
+      stageWrap.requestFullscreen();
+    }
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    syncViewportSize();
   });
 
   window.addEventListener('keydown', e => {

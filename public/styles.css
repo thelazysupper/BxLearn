@@ -999,6 +999,13 @@ svg.lucide {
   position: relative;
 }
 
+.stage-viewport-wrap:fullscreen {
+  width: 100%;
+  height: 100%;
+  background: #04111F;
+  padding: 20px;
+}
+
 /* Outer steady 16:9 background stage behind vertical/horizontal screens */
 .stage-backdrop-frame {
   position: relative;
