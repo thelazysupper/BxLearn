@@ -4394,15 +4394,61 @@ function base64UrlToBytes(str) {
 }
 
 async function encodeSharePayload(demo) {
+  const urlTable = [];
+  const urlIndexMap = new Map();
+  const compactSteps = (demo.steps || []).map(st => {
+    const s = {};
+    if (st.type && st.type !== 'hotspot') s.ty = st.type;
+    if (st.isExplainer) s.ex = 1;
+    if (st.showKicker === false) s.sk = 0;
+    if (st.showTitle === false) s.st = 0;
+    if (st.showBody === false) s.sb = 0;
+    if (st.showPrimaryBtn === false || st.showButtons === false) s.sp = 0;
+    if (st.showBackBtn === false || st.showButtons === false) s.sk2 = 0;
+    const isExplainer = st.type === 'explainer' || st.isExplainer === true;
+    if (st.showProgress !== undefined && Boolean(st.showProgress) !== !isExplainer) {
+      s.spg = st.showProgress ? 1 : 0;
+    }
+    if (st.screenLayout && st.screenLayout !== 'default') s.sl = st.screenLayout;
+    if (st.backdrop && st.backdrop !== 'blur') s.bd = st.backdrop;
+    if (st.kicker) s.k = st.kicker;
+    if (st.timestamp) s.ts = Number(st.timestamp);
+    if (st.title) s.t = st.title;
+    if (st.body) s.b = st.body;
+    if (st.x !== undefined && st.x !== 50) s.x = Number(st.x);
+    if (st.y !== undefined && st.y !== 50) s.y = Number(st.y);
+    if (st.w) s.w = Number(st.w);
+    if (st.h) s.h = Number(st.h);
+    if (st.style && st.style !== 'beacon') s.sy = st.style;
+    if (st.placement && st.placement !== 'auto') s.pl = st.placement;
+    if (st.buttonText) s.bt = st.buttonText;
+    if (st.advanceOnHotspotClick === false) s.ah = 0;
+    if (st.showTooltip === false) s.stp = 0;
+    if (st.ctaUrl) s.cu = st.ctaUrl;
+    if (st.imageUrl) {
+      let idx = urlIndexMap.get(st.imageUrl);
+      if (idx === undefined) {
+        idx = urlTable.length;
+        urlTable.push(st.imageUrl);
+        urlIndexMap.set(st.imageUrl, idx);
+      }
+      s.im = idx;
+    }
+    return s;
+  });
+
   const minimal = {
+    v: 2,
     id: demo.id,
-    title: demo.title || 'Walkthrough',
-    description: demo.description || '',
-    videoUrl: demo.videoUrl || '',
-    useSampleCanvasVideo: Boolean(demo.useSampleCanvasVideo),
-    manualStepOrder: Boolean(demo.manualStepOrder),
-    steps: demo.steps || []
+    t: demo.title || 'Walkthrough',
+    s: compactSteps
   };
+  if (demo.description) minimal.d = demo.description;
+  if (demo.videoUrl) minimal.vu = demo.videoUrl;
+  if (demo.useSampleCanvasVideo) minimal.sc = 1;
+  if (demo.manualStepOrder) minimal.mo = 1;
+  if (urlTable.length > 0) minimal.u = urlTable;
+
   const jsonBytes = new TextEncoder().encode(JSON.stringify(minimal));
   if (typeof CompressionStream === 'function') {
     try {
@@ -4417,9 +4463,55 @@ async function encodeSharePayload(demo) {
   return 'u_' + bytesToBase64Url(jsonBytes);
 }
 
+function expandSharePayload(parsed) {
+  if (!parsed || parsed.v !== 2) return parsed;
+  const urls = Array.isArray(parsed.u) ? parsed.u : [];
+  return {
+    id: parsed.id || 'shared-demo',
+    title: parsed.t || 'Walkthrough',
+    description: parsed.d || '',
+    videoUrl: parsed.vu || '',
+    useSampleCanvasVideo: Boolean(parsed.sc),
+    manualStepOrder: Boolean(parsed.mo),
+    steps: (parsed.s || []).map((s, idx) => {
+      const type = s.ty || 'hotspot';
+      const isExplainer = type === 'explainer' || Boolean(s.ex);
+      return {
+        id: `s${idx}`,
+        type,
+        isExplainer,
+        showKicker: s.sk !== 0,
+        showTitle: s.st !== 0,
+        showBody: s.sb !== 0,
+        showPrimaryBtn: s.sp !== 0,
+        showBackBtn: s.sk2 !== 0,
+        showProgress: s.spg !== undefined ? Boolean(s.spg) : !isExplainer,
+        screenLayout: s.sl || 'default',
+        backdrop: s.bd || 'blur',
+        kicker: s.k || '',
+        timestamp: s.ts || 0,
+        title: s.t || '',
+        body: s.b || '',
+        x: s.x !== undefined ? s.x : 50,
+        y: s.y !== undefined ? s.y : 50,
+        w: s.w,
+        h: s.h,
+        style: s.sy || 'beacon',
+        placement: s.pl || 'auto',
+        buttonText: s.bt || '',
+        advanceOnHotspotClick: s.ah !== 0,
+        showTooltip: s.stp !== 0,
+        ctaUrl: s.cu || '',
+        imageUrl: s.im !== undefined ? (urls[s.im] || '') : ''
+      };
+    })
+  };
+}
+
 async function decodeSharePayload(token) {
   if (!token) return null;
   try {
+    let parsed = null;
     if (token.startsWith('z_') && typeof DecompressionStream === 'function') {
       const bytes = base64UrlToBytes(token.slice(2));
       const ds = new DecompressionStream('deflate-raw');
@@ -4427,11 +4519,13 @@ async function decodeSharePayload(token) {
       writer.write(bytes);
       writer.close();
       const text = await new Response(ds.readable).text();
-      return JSON.parse(text);
+      parsed = JSON.parse(text);
+    } else {
+      const raw = token.startsWith('u_') ? token.slice(2) : token;
+      const bytes = base64UrlToBytes(raw);
+      parsed = JSON.parse(new TextDecoder().decode(bytes));
     }
-    const raw = token.startsWith('u_') ? token.slice(2) : token;
-    const bytes = base64UrlToBytes(raw);
-    return JSON.parse(new TextDecoder().decode(bytes));
+    return expandSharePayload(parsed);
   } catch (err) {
     console.warn('Failed to decode shared preview payload:', err);
     return null;
@@ -4440,6 +4534,38 @@ async function decodeSharePayload(token) {
 
 async function copySharePreviewUrl() {
   if (!state.activeDemo) return;
+
+  // Auto-upload any remaining base64 screenshots to Webflow Assets if connected
+  const hasWf = Boolean(state.wfConfig?.apiToken && state.wfConfig?.siteId);
+  const base64Steps = (state.activeDemo.steps || []).filter(
+    s => s && typeof s.imageUrl === 'string' && s.imageUrl.startsWith('data:image/')
+  );
+  let uploadFailed = false;
+  if (hasWf && base64Steps.length > 0) {
+    showToast('Uploading screenshots to Webflow Assets...');
+    let converted = 0;
+    for (const step of base64Steps) {
+      try {
+        const blob = await (await fetch(step.imageUrl)).blob();
+        const ext = (blob.type && blob.type.split('/')[1]) || 'png';
+        const file = new File([blob], step.imageName || `step-${step.id}.${ext}`, { type: blob.type || 'image/png' });
+        const uploaded = await webflowUploadAsset(file);
+        if (uploaded && uploaded.imageUrl) {
+          step.imageUrl = uploaded.imageUrl;
+          converted += 1;
+        } else {
+          uploadFailed = true;
+        }
+      } catch {
+        uploadFailed = true;
+      }
+    }
+    if (converted > 0) {
+      await apiUpdateDemo(state.activeDemo);
+      renderHotspotOverlay();
+    }
+  }
+
   const encoded = await encodeSharePayload(state.activeDemo);
   const url = `${window.location.origin}${window.location.pathname}#share=${encoded}`;
   try {
@@ -4452,8 +4578,10 @@ async function copySharePreviewUrl() {
     document.execCommand('copy');
     ta.remove();
   }
-  if (url.length > 8000) {
-    showToast('Preview link copied (connect Webflow Assets for shorter URLs)');
+  if (uploadFailed) {
+    showToast('Link copied, but Webflow Asset upload failed (check assets:write scope on API token)');
+  } else if (url.length > 8000) {
+    showToast('Preview link copied (pick images from Webflow Assets for shorter URLs)');
   } else {
     showToast('Preview link copied to clipboard');
   }
