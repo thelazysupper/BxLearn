@@ -1533,11 +1533,6 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     screenEl.className = `demo-text-screen backdrop-${backdropMode}`;
     screenEl.innerHTML = `
       <div class="text-screen-card">
-        ${pos.isExplainer ? '' : `
-          <div class="tooltip-progress-bar" style="width:100%; margin-bottom:14px;">
-            <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
-          </div>
-        `}
         <div class="text-screen-kicker" id="active-stage-kicker">${step.kicker ? escapeHtml(step.kicker) : (pos.isExplainer ? 'Explainer' : `Step ${pos.number} of ${pos.total}`)}</div>
         <h2 class="text-screen-title" id="active-stage-title">${escapeHtml(step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`))}</h2>
         <p class="text-screen-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>
@@ -1549,6 +1544,11 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
             <i data-lucide="arrow-right"></i>
           </button>
         </div>
+        ${pos.isExplainer ? '' : `
+          <div class="tooltip-progress-bar" style="width:100%; margin-top:16px; margin-bottom:0;">
+            <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
+          </div>
+        `}
       </div>
     `;
     screenEl.addEventListener('pointerdown', e => e.stopPropagation());
@@ -1662,9 +1662,6 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     tooltip.id = 'active-hotspot-tooltip';
     tooltip.className = `hotspot-tooltip ${resolvePlacementClass(step)}`;
     tooltip.innerHTML = `
-      <div class="tooltip-progress-bar">
-        <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
-      </div>
       <div class="tooltip-step-top">
         <span class="tooltip-step-counter">Step ${pos.number} of ${pos.total}</span>
       </div>
@@ -1676,6 +1673,9 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
           ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline">Open Link</a>` : ''}
           <button type="button" class="btn btn-xs btn-primary" data-step-nav="next"><span id="active-stage-btn-text">${escapeHtml(btnText)}</span></button>
         </div>
+      </div>
+      <div class="tooltip-progress-bar">
+        <div class="tooltip-progress-fill" style="width: ${progressPct}%"></div>
       </div>
     `;
 

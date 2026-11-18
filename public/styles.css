@@ -1448,7 +1448,8 @@ svg.lucide {
   background: var(--bg-subtle);
   border-radius: 99px;
   overflow: hidden;
-  margin-bottom: 10px;
+  margin-top: 12px;
+  margin-bottom: 0;
 }
 
 .tooltip-progress-fill {
