@@ -2291,14 +2291,18 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       #${widgetId} .bx-screen-overlay { position:absolute; inset:0; pointer-events:none; z-index:18; }
       #${widgetId} .bx-stage.is-split .bx-screen-overlay { position:relative; inset:auto; width:100%; height:100%; min-width:0; min-height:0; }
       #${widgetId} .bx-anchor { position:absolute; width:0; height:0; pointer-events:auto; }
-      #${widgetId} .bx-pin { position:absolute; left:0; top:0; width:28px; height:28px; border-radius:50%; background:#0076DD; border:2.5px solid #FFF; color:#FFF; font-family:'Host Grotesk',sans-serif; font-weight:600; font-size:12px; display:flex; align-items:center; justify-content:center; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 0 0 8px rgba(0,118,221,0.28); }
-      #${widgetId} .bx-trace { position:absolute; inset:0; border-radius:8px; border:2.5px solid #0076DD; background:rgba(0,118,221,0.10); box-shadow:0 0 0 4px rgba(0,118,221,0.22); cursor:pointer; }
-      #${widgetId} .bx-tip { position:absolute; width:270px; background:#FFF; border-radius:12px; padding:15px; box-shadow:0 16px 38px rgba(0,24,44,0.24); }
+      #${widgetId} .bx-pin { position:absolute; left:0; top:0; width:28px; height:28px; border-radius:50%; background:#0076DD; border:2.5px solid #FFF; color:#FFF; font-family:'Host Grotesk',sans-serif; font-weight:600; font-size:12px; display:flex; align-items:center; justify-content:center; transform:translate(-50%,-50%); cursor:pointer; box-shadow:0 0 0 8px rgba(0,118,221,0.28); animation:bxPulse_${widgetId} 2.2s ease-in-out infinite; }
+      #${widgetId} .bx-trace { position:absolute; inset:0; border-radius:8px; border:2.5px solid #0076DD; background:rgba(0,118,221,0.10); box-shadow:0 0 0 4px rgba(0,118,221,0.22); cursor:pointer; animation:bxFadeIn_${widgetId} 0.22s ease-out; }
+      #${widgetId} .bx-tip { position:absolute; width:270px; background:#FFF; border-radius:12px; padding:15px; box-shadow:0 16px 38px rgba(0,24,44,0.24); animation:bxTipIn_${widgetId} 0.24s cubic-bezier(0.16,1,0.3,1); }
       #${widgetId} .bx-tip h4 { font-family:'Host Grotesk',sans-serif; font-weight:600; color:#00182C; font-size:15px; margin:0 0 5px; }
       #${widgetId} .bx-tip p { font-family:'Google Sans',sans-serif; color:#324158; font-size:13px; margin:0 0 12px; line-height:1.45; }
-      #${widgetId} .bx-screen { position:absolute; inset:0; background:rgba(0,24,44,0.78); display:flex; align-items:center; justify-content:center; padding:24px; pointer-events:auto; }
+      #${widgetId} .bx-screen { position:absolute; inset:0; background:rgba(0,24,44,0.78); display:flex; align-items:center; justify-content:center; padding:24px; pointer-events:auto; animation:bxFadeIn_${widgetId} 0.22s ease-out; }
       #${widgetId} .bx-stage.is-split .bx-screen { padding:0; background:transparent; }
-      #${widgetId} .bx-screen-card { max-width:440px; width:100%; background:#FFF; border-radius:16px; padding:30px; text-align:center; box-shadow:0 24px 52px rgba(0,24,44,0.28); box-sizing:border-box; }
+      #${widgetId} .bx-screen-card { max-width:440px; width:100%; background:#FFF; border-radius:16px; padding:30px; text-align:center; box-shadow:0 24px 52px rgba(0,24,44,0.28); box-sizing:border-box; animation:bxTipIn_${widgetId} 0.26s cubic-bezier(0.16,1,0.3,1); }
+      #${widgetId} .bx-img.is-entering { animation:bxFadeIn_${widgetId} 0.22s ease-out; }
+      @keyframes bxPulse_${widgetId} { 0%, 100% { box-shadow:0 0 0 6px rgba(0,118,221,0.28); } 50% { box-shadow:0 0 0 12px rgba(0,118,221,0.10); } }
+      @keyframes bxFadeIn_${widgetId} { from { opacity:0; } to { opacity:1; } }
+      @keyframes bxTipIn_${widgetId} { from { opacity:0; margin-top:6px; } to { opacity:1; margin-top:0; } }
       #${widgetId} .bx-stage.is-split .bx-screen-card { max-width:100%; height:100%; border-radius:0; box-shadow:none; padding:28px 32px; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; text-align:left; overflow-y:auto; }
       #${widgetId} .bx-btn { background:#0076DD; color:#FFF; border:none; border-radius:7px; padding:8px 16px; font-family:'Host Grotesk',sans-serif; font-weight:600; font-size:13px; cursor:pointer; }
       #${widgetId} .bx-bar { background:#FFF; border-top:1px solid #E2E8F0; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; }
@@ -2329,6 +2333,15 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
   const screenOverlay = root.querySelector(".bx-screen-overlay");
   const dots = root.querySelector(".bx-dots");
   let mediaRatio = 16 / 9;
+  let renderSeq = 0;
+
+  // Preload all step screenshots so transitions stay instant and in sync
+  (demo.steps || []).forEach(st => {
+    if (st && st.imageUrl) {
+      const pre = new Image();
+      pre.src = st.imageUrl;
+    }
+  });
 
   function fitInner() {
     if (!stage || !inner) return;
@@ -2349,14 +2362,9 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       fitInner();
     }
   });
-  img.addEventListener("load", () => {
-    if (img.naturalWidth && img.naturalHeight) {
-      mediaRatio = img.naturalWidth / img.naturalHeight;
-      fitInner();
-    }
-  });
 
   function render() {
+    const seq = ++renderSeq;
     overlay.innerHTML = "";
     screenOverlay.innerHTML = "";
     dots.innerHTML = "";
@@ -2390,67 +2398,94 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
     const showBody = s.showBody !== false;
     const showButtons = s.showButtons !== false;
     stage.classList.toggle("is-split", isSplit);
-    if (s.imageUrl) {
-      video.style.display = "none";
-      img.style.display = "block";
-      img.src = s.imageUrl;
-    } else {
-      img.style.display = "none";
-      video.style.display = "block";
-    }
-    fitInner();
-    if (isScreen) {
-      const scr = document.createElement("div");
-      scr.className = "bx-screen";
-      scr.innerHTML = \`<div class="bx-screen-card">\${showKicker && s.kicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;background:rgba(0,118,221,0.1);padding:4px 10px;border-radius:99px;display:inline-block;margin-bottom:10px;">\${s.kicker}</div>\` : ''}\${showTitle ? \`<h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;margin:0 0 8px;">\${s.title}</h3>\` : ''}\${showBody ? \`<p style="font-size:14px;color:#324158;margin:0 0 18px;line-height:1.5;">\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Continue'}</button>\` : ''}</div>\`;
-      const btnEl = scr.querySelector("button");
-      if (btnEl) btnEl.onclick = next;
-      screenOverlay.appendChild(scr);
-      return;
-    }
-    const anchor = document.createElement("div");
-    anchor.className = "bx-anchor";
-    anchor.style.left = s.x + "%"; anchor.style.top = s.y + "%";
-    if (isExplainer) {
-      const tip = document.createElement("div");
-      tip.className = "bx-tip";
-      tip.style.transform = "translate(-50%, -50%)";
-      tip.style.pointerEvents = "auto";
-      tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">\${s.kicker || 'Explainer'}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Continue'}</button>\` : ''}\`;
-      const btnEl = tip.querySelector("button");
-      if (btnEl) btnEl.onclick = next;
-      anchor.appendChild(tip);
+
+    function commitStepOverlay() {
+      if (seq !== renderSeq) return;
+      fitInner();
+      if (isScreen) {
+        const scr = document.createElement("div");
+        scr.className = "bx-screen";
+        scr.innerHTML = \`<div class="bx-screen-card">\${showKicker && s.kicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;background:rgba(0,118,221,0.1);padding:4px 10px;border-radius:99px;display:inline-block;margin-bottom:10px;">\${s.kicker}</div>\` : ''}\${showTitle ? \`<h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;margin:0 0 8px;">\${s.title}</h3>\` : ''}\${showBody ? \`<p style="font-size:14px;color:#324158;margin:0 0 18px;line-height:1.5;">\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Continue'}</button>\` : ''}</div>\`;
+        const btnEl = scr.querySelector("button");
+        if (btnEl) btnEl.onclick = next;
+        screenOverlay.appendChild(scr);
+        return;
+      }
+      const anchor = document.createElement("div");
+      anchor.className = "bx-anchor";
+      anchor.style.left = s.x + "%"; anchor.style.top = s.y + "%";
+      if (isExplainer) {
+        const tip = document.createElement("div");
+        tip.className = "bx-tip";
+        tip.style.transform = "translate(-50%, -50%)";
+        tip.style.pointerEvents = "auto";
+        tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">\${s.kicker || 'Explainer'}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Continue'}</button>\` : ''}\`;
+        const btnEl = tip.querySelector("button");
+        if (btnEl) btnEl.onclick = next;
+        anchor.appendChild(tip);
+        overlay.appendChild(anchor);
+        return;
+      }
+      if (s.style === "trace") {
+        anchor.style.width = (s.w || 16) + "%";
+        anchor.style.height = (s.h || 8) + "%";
+        anchor.style.transform = "translate(-50%,-50%)";
+        const tr = document.createElement("div");
+        tr.className = "bx-trace";
+        tr.onclick = next;
+        anchor.appendChild(tr);
+      } else {
+        const pin = document.createElement("div");
+        pin.className = "bx-pin";
+        pin.textContent = stepNumbers[stepIdx] || "•";
+        pin.onclick = next;
+        anchor.appendChild(pin);
+      }
+
+      if (s.showTooltip !== false) {
+        const tip = document.createElement("div");
+        tip.className = "bx-tip";
+        tip.style.pointerEvents = "auto";
+        if (s.x > 62) { tip.style.right = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
+        else { tip.style.left = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
+        tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">Step \${stepNumbers[stepIdx] || (stepIdx+1)}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Next'}</button>\` : ''}\`;
+        const btnEl = tip.querySelector("button");
+        if (btnEl) btnEl.onclick = next;
+        anchor.appendChild(tip);
+      }
       overlay.appendChild(anchor);
-      return;
-    }
-    if (s.style === "trace") {
-      anchor.style.width = (s.w || 16) + "%";
-      anchor.style.height = (s.h || 8) + "%";
-      anchor.style.transform = "translate(-50%,-50%)";
-      const tr = document.createElement("div");
-      tr.className = "bx-trace";
-      tr.onclick = next;
-      anchor.appendChild(tr);
-    } else {
-      const pin = document.createElement("div");
-      pin.className = "bx-pin";
-      pin.textContent = stepNumbers[stepIdx] || "•";
-      pin.onclick = next;
-      anchor.appendChild(pin);
     }
 
-    if (s.showTooltip !== false) {
-      const tip = document.createElement("div");
-      tip.className = "bx-tip";
-      tip.style.pointerEvents = "auto";
-      if (s.x > 62) { tip.style.right = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
-      else { tip.style.left = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
-      tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">Step \${stepNumbers[stepIdx] || (stepIdx+1)}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${showButtons ? \`<button class="bx-btn">\${s.buttonText || 'Next'}</button>\` : ''}\`;
-      const btnEl = tip.querySelector("button");
-      if (btnEl) btnEl.onclick = next;
-      anchor.appendChild(tip);
+    if (s.imageUrl) {
+      video.style.display = "none";
+      const sameSrc = img.getAttribute("src") === s.imageUrl;
+      if (sameSrc && img.complete && img.naturalWidth) {
+        img.style.display = "block";
+        mediaRatio = img.naturalWidth / img.naturalHeight;
+        commitStepOverlay();
+      } else {
+        img.classList.remove("is-entering");
+        const onReady = () => {
+          if (seq !== renderSeq) return;
+          if (img.naturalWidth && img.naturalHeight) {
+            mediaRatio = img.naturalWidth / img.naturalHeight;
+          }
+          img.style.display = "block";
+          void img.offsetWidth;
+          img.classList.add("is-entering");
+          commitStepOverlay();
+        };
+        img.onload = onReady;
+        img.onerror = commitStepOverlay;
+        img.src = s.imageUrl;
+        if (img.complete && img.naturalWidth) onReady();
+      }
+      return;
     }
-    overlay.appendChild(anchor);
+
+    img.style.display = "none";
+    video.style.display = "block";
+    commitStepOverlay();
   }
   function jump(i) {
     stepIdx = i;
