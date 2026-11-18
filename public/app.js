@@ -4512,11 +4512,14 @@ async function encodeSharePayload(demo) {
     if (st.showTooltip === false) s.stp = 0;
     if (st.ctaUrl) s.cu = st.ctaUrl;
     if (st.imageUrl) {
-      let idx = urlIndexMap.get(st.imageUrl);
+      const compactUrl = st.imageUrl.startsWith('https://cdn.prod.website-files.com/')
+        ? '~wf/' + st.imageUrl.slice('https://cdn.prod.website-files.com/'.length)
+        : st.imageUrl;
+      let idx = urlIndexMap.get(compactUrl);
       if (idx === undefined) {
         idx = urlTable.length;
-        urlTable.push(st.imageUrl);
-        urlIndexMap.set(st.imageUrl, idx);
+        urlTable.push(compactUrl);
+        urlIndexMap.set(compactUrl, idx);
       }
       s.im = idx;
     }
@@ -4551,7 +4554,11 @@ async function encodeSharePayload(demo) {
 
 function expandSharePayload(parsed) {
   if (!parsed || parsed.v !== 2) return parsed;
-  const urls = Array.isArray(parsed.u) ? parsed.u : [];
+  const urls = Array.isArray(parsed.u)
+    ? parsed.u.map(u => (typeof u === 'string' && u.startsWith('~wf/'))
+      ? 'https://cdn.prod.website-files.com/' + u.slice(4)
+      : u)
+    : [];
   return {
     id: parsed.id || 'shared-demo',
     title: parsed.t || 'Walkthrough',
@@ -4666,11 +4673,11 @@ async function copySharePreviewUrl() {
     ta.remove();
   }
   if (uploadFailed) {
-    showToast(`Link copied, but Webflow upload failed: ${lastWebflowUploadError || 'check assets:write scope'}`);
+    showToast(`Link copied (${url.length} chars), but Webflow upload failed: ${lastWebflowUploadError || 'check assets:write scope'}`);
   } else if (url.length > 8000) {
-    showToast('Preview link copied (connect Webflow Assets with assets:write for shorter URLs)');
+    showToast(`Preview link copied (${url.length} chars — connect Webflow Assets with assets:write for shorter URLs)`);
   } else {
-    showToast('Preview link copied to clipboard');
+    showToast(`Preview link copied (${url.length} chars)`);
   }
 }
 
