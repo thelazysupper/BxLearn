@@ -524,13 +524,20 @@ function getWebflowConfig() {
   }
 }
 
+let lastWebflowUploadError = '';
+
 async function webflowUploadAsset(file) {
   const { apiToken: token, siteId } = getWebflowConfig();
-  if (!token || !siteId) return null;
+  if (!token || !siteId) {
+    lastWebflowUploadError = 'Webflow API token or Site ID not configured';
+    return null;
+  }
 
+  lastWebflowUploadError = '';
   const base = getAppBasePath();
   const endpoint = `/v2/sites/${encodeURIComponent(siteId)}/assets`;
-  const fileName = file.name || `screenshot-${Date.now()}.png`;
+  const rawName = file.name || `screenshot-${Date.now()}.png`;
+  const fileName = rawName.replace(/[^a-zA-Z0-9._-]/g, '_');
   const candidateUrls = [
     `${base}/api/webflow/proxy?endpoint=${encodeURIComponent(endpoint)}`,
     `/api/webflow/proxy?endpoint=${encodeURIComponent(endpoint)}`
@@ -552,13 +559,16 @@ async function webflowUploadAsset(file) {
         return { imageUrl: data.hostedUrl || data.assetUrl, fileName: data.fileName || fileName };
       }
       if (res.status !== 404) {
-        console.warn('Webflow asset upload error:', data.error || res.status);
+        lastWebflowUploadError = data.error || data.message || `HTTP ${res.status}`;
+        console.warn('Webflow asset upload error:', lastWebflowUploadError);
         return null;
       }
     } catch (err) {
+      lastWebflowUploadError = err.message || 'Network error';
       console.warn('Webflow asset upload failed:', err);
     }
   }
+  if (!lastWebflowUploadError) lastWebflowUploadError = 'Proxy endpoint not found (404)';
   return null;
 }
 
@@ -4656,9 +4666,9 @@ async function copySharePreviewUrl() {
     ta.remove();
   }
   if (uploadFailed) {
-    showToast('Link copied, but Webflow Asset upload failed (check assets:write scope on API token)');
+    showToast(`Link copied, but Webflow upload failed: ${lastWebflowUploadError || 'check assets:write scope'}`);
   } else if (url.length > 8000) {
-    showToast('Preview link copied (pick images from Webflow Assets for shorter URLs)');
+    showToast('Preview link copied (connect Webflow Assets with assets:write for shorter URLs)');
   } else {
     showToast('Preview link copied to clipboard');
   }
