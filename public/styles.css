@@ -766,6 +766,27 @@ svg.lucide {
 }
 
 .editor-layout.preview-mode .steps-sidebar,
+.app-shell.shared-preview-mode #btn-back-library,
+.app-shell.shared-preview-mode #editor-folder-pill,
+.app-shell.shared-preview-mode .breadcrumb-sep,
+.app-shell.shared-preview-mode #editor-mode-switcher-wrap,
+.app-shell.shared-preview-mode #btn-share-preview,
+.app-shell.shared-preview-mode #btn-webflow-hub,
+.app-shell.shared-preview-mode #btn-new-demo-top,
+.app-shell.shared-preview-mode #btn-logout,
+.app-shell.shared-preview-mode #save-status {
+  display: none !important;
+}
+
+.app-shell.shared-preview-mode .brand {
+  display: flex !important;
+  cursor: default;
+}
+
+.app-shell.shared-preview-mode .inline-title-input {
+  pointer-events: none;
+}
+
 .editor-layout.preview-mode .inspector-sidebar {
   display: none;
 }

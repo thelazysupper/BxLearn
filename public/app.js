@@ -1235,6 +1235,7 @@ function openDemoInEditor(demoId, initialMode = 'edit') {
   document.getElementById('brand-home').classList.add('hidden');
   document.getElementById('btn-new-demo-top').classList.add('hidden');
   document.getElementById('btn-back-library').classList.remove('hidden');
+  document.getElementById('btn-share-preview')?.classList.remove('hidden');
   document.getElementById('editor-breadcrumb').classList.remove('hidden');
   document.getElementById('editor-mode-switcher').classList.remove('hidden');
 
@@ -2971,6 +2972,7 @@ function bindEvents() {
     document.getElementById('brand-home').classList.remove('hidden');
     document.getElementById('btn-new-demo-top').classList.remove('hidden');
     document.getElementById('btn-back-library').classList.add('hidden');
+    document.getElementById('btn-share-preview')?.classList.add('hidden');
     document.getElementById('editor-breadcrumb').classList.add('hidden');
     document.getElementById('editor-mode-switcher').classList.add('hidden');
     document.getElementById('save-status').classList.add('hidden');
@@ -2978,6 +2980,7 @@ function bindEvents() {
   };
 
   document.getElementById('btn-back-library').addEventListener('click', goHome);
+  document.getElementById('btn-share-preview')?.addEventListener('click', copySharePreviewUrl);
   document.getElementById('brand-home').addEventListener('click', goHome);
 
   document.getElementById('btn-new-demo-top').addEventListener('click', handleCreateNewDemo);
@@ -4376,7 +4379,113 @@ const AUTH_STORAGE_KEY = 'bxlearn_auth_session_v1';
 const AUTH_USER = 'marcus.saltvik@bxsoftware.no';
 const AUTH_PASS = 'SvenToreBowling123@';
 
+function bytesToBase64Url(bytes) {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlToBytes(str) {
+  const b64 = str.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((str.length + 3) % 4);
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+async function encodeSharePayload(demo) {
+  const minimal = {
+    id: demo.id,
+    title: demo.title || 'Walkthrough',
+    description: demo.description || '',
+    videoUrl: demo.videoUrl || '',
+    useSampleCanvasVideo: Boolean(demo.useSampleCanvasVideo),
+    manualStepOrder: Boolean(demo.manualStepOrder),
+    steps: demo.steps || []
+  };
+  const jsonBytes = new TextEncoder().encode(JSON.stringify(minimal));
+  if (typeof CompressionStream === 'function') {
+    try {
+      const cs = new CompressionStream('deflate-raw');
+      const writer = cs.writable.getWriter();
+      writer.write(jsonBytes);
+      writer.close();
+      const compressed = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+      return 'z_' + bytesToBase64Url(compressed);
+    } catch {}
+  }
+  return 'u_' + bytesToBase64Url(jsonBytes);
+}
+
+async function decodeSharePayload(token) {
+  if (!token) return null;
+  try {
+    if (token.startsWith('z_') && typeof DecompressionStream === 'function') {
+      const bytes = base64UrlToBytes(token.slice(2));
+      const ds = new DecompressionStream('deflate-raw');
+      const writer = ds.writable.getWriter();
+      writer.write(bytes);
+      writer.close();
+      const text = await new Response(ds.readable).text();
+      return JSON.parse(text);
+    }
+    const raw = token.startsWith('u_') ? token.slice(2) : token;
+    const bytes = base64UrlToBytes(raw);
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch (err) {
+    console.warn('Failed to decode shared preview payload:', err);
+    return null;
+  }
+}
+
+async function copySharePreviewUrl() {
+  if (!state.activeDemo) return;
+  const encoded = await encodeSharePayload(state.activeDemo);
+  const url = `${window.location.origin}${window.location.pathname}#share=${encoded}`;
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  }
+  if (url.length > 8000) {
+    showToast('Preview link copied (connect Webflow Assets for shorter URLs)');
+  } else {
+    showToast('Preview link copied to clipboard');
+  }
+}
+
+function getSharedPreviewParams() {
+  const hash = window.location.hash || '';
+  const hashMatch = hash.match(/#share=([^&]+)/);
+  const queryId = new URLSearchParams(window.location.search).get('preview');
+  return {
+    shareToken: hashMatch ? decodeURIComponent(hashMatch[1]) : null,
+    previewId: queryId || null
+  };
+}
+
+function isSharedPreviewUrl() {
+  const { shareToken, previewId } = getSharedPreviewParams();
+  return Boolean(shareToken || previewId);
+}
+
+function openSharedPreviewDemo(demo) {
+  if (!demo) return;
+  state.isSharedPreviewMode = true;
+  document.getElementById('app')?.classList.add('shared-preview-mode');
+  const existingIdx = state.demos.findIndex(d => d.id === demo.id);
+  if (existingIdx === -1) state.demos.unshift(demo);
+  else state.demos[existingIdx] = demo;
+  openDemoInEditor(demo.id, 'preview');
+}
+
 function isStudioAuthenticated() {
+  if (isSharedPreviewUrl()) return true;
   try {
     return localStorage.getItem(AUTH_STORAGE_KEY) === 'authenticated';
   } catch (e) {
@@ -4441,15 +4550,40 @@ function bindAuthEvents() {
   updateAuthGateUI();
   bindEvents();
 
+  const { shareToken, previewId } = getSharedPreviewParams();
+  if (shareToken) {
+    const sharedDemo = await decodeSharePayload(shareToken);
+    if (sharedDemo) {
+      openSharedPreviewDemo(sharedDemo);
+      return;
+    }
+  }
+
   const fallback = await loadLocalFallbackWorkspace();
   state.folders = fallback.folders || [];
   state.demos = fallback.demos || [];
+
+  if (previewId) {
+    const found = state.demos.find(d => d.id === previewId);
+    if (found) {
+      openSharedPreviewDemo(found);
+      return;
+    }
+  }
+
   renderLibraryView();
 
   const data = await apiFetchWorkspace();
   if (data && Array.isArray(data.folders) && Array.isArray(data.demos)) {
     state.folders = data.folders;
     state.demos = data.demos;
+    if (previewId) {
+      const found = state.demos.find(d => d.id === previewId);
+      if (found) {
+        openSharedPreviewDemo(found);
+        return;
+      }
+    }
     if (state.currentView === 'library') {
       renderLibraryView();
     }
