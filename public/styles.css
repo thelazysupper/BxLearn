@@ -793,7 +793,7 @@ svg.lucide {
 
 .app-shell.shared-preview-mode .brand {
   display: flex !important;
-  cursor: default;
+  cursor: pointer;
 }
 
 .app-shell.shared-preview-mode .inline-title-input {

@@ -3016,7 +3016,14 @@ function bindEvents() {
 
   document.getElementById('btn-back-library').addEventListener('click', goHome);
   document.getElementById('btn-share-preview')?.addEventListener('click', copySharePreviewUrl);
-  document.getElementById('brand-home').addEventListener('click', goHome);
+  document.getElementById('brand-home').addEventListener('click', () => {
+    const inFlowPreview = state.currentView === 'flow' && typeof flowState !== 'undefined' && flowState.mode === 'preview';
+    if (state.isSharedPreviewMode || state.editorMode === 'preview' || inFlowPreview) {
+      window.location.href = 'https://bxlogistics.no';
+      return;
+    }
+    goHome();
+  });
 
   document.getElementById('btn-new-demo-top').addEventListener('click', handleCreateNewDemo);
   document.getElementById('btn-webflow-hub').addEventListener('click', () => {
