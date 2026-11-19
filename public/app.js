@@ -1188,12 +1188,25 @@ function resolveStepImageUrl(step) {
   return '';
 }
 
-function syncStageMediaForStep(step) {
+function preloadDemoImages(demo) {
+  if (!demo || !Array.isArray(demo.steps)) return;
+  demo.steps.forEach(s => {
+    if (s && s.imageUrl) {
+      const pre = new Image();
+      pre.src = s.imageUrl;
+    }
+  });
+}
+
+function syncStageMediaForStep(step, onReady = null) {
   const video = document.getElementById('demo-video');
   const canvas = document.getElementById('sample-video-canvas');
   const img = document.getElementById('demo-step-image');
   const timelineBar = document.getElementById('timeline-bar');
-  if (!video || !canvas || !img) return;
+  if (!video || !canvas || !img) {
+    if (onReady) onReady();
+    return;
+  }
 
   const hasVideo = demoHasVideo(state.activeDemo);
   if (timelineBar) {
@@ -1208,16 +1221,28 @@ function syncStageMediaForStep(step) {
     img.classList.remove('hidden');
 
     if (img.getAttribute('src') !== imgUrl) {
-      img.onload = () => {
+      let finished = false;
+      const done = () => {
+        if (finished) return;
+        finished = true;
         if (img.naturalWidth && img.naturalHeight) {
           state.videoAspectRatio = img.naturalWidth / img.naturalHeight;
-          syncViewportSize();
         }
+        syncViewportSize();
+        if (onReady) onReady();
       };
+      img.onload = done;
+      img.onerror = done;
       img.src = imgUrl;
+      if (img.complete && img.naturalWidth && img.naturalHeight) {
+        done();
+      }
     } else if (img.complete && img.naturalWidth && img.naturalHeight) {
       state.videoAspectRatio = img.naturalWidth / img.naturalHeight;
       syncViewportSize();
+      if (onReady) onReady();
+    } else if (onReady) {
+      onReady();
     }
     return;
   }
@@ -1236,6 +1261,7 @@ function syncStageMediaForStep(step) {
       syncViewportSize();
     }
   }
+  if (onReady) onReady();
 }
 
 function sortActiveSteps() {
@@ -1254,6 +1280,7 @@ function openDemoInEditor(demoId, initialMode = 'edit') {
   state.redoStack = [];
   updateUndoButtonState();
   sortActiveSteps();
+  preloadDemoImages(state.activeDemo);
   state.selectedStepId = state.activeDemo.steps[0]?.id || null;
   state.currentView = 'editor';
 
@@ -1749,7 +1776,10 @@ function resolvePlacementClass(step) {
   return classes.join(' ');
 }
 
+let overlayRenderSeq = 0;
+
 function renderHotspotOverlay() {
+  const seq = ++overlayRenderSeq;
   const overlay = document.getElementById('hotspot-overlay');
   const screenOverlay = document.getElementById('stage-screen-overlay');
   if (!overlay || !state.activeDemo) return;
@@ -1771,10 +1801,14 @@ function renderHotspotOverlay() {
       syncViewportSize();
       return;
     }
-    syncStageMediaForStep(step);
-    syncViewportSize();
     const stepIdx = steps.findIndex(s => s.id === step.id);
-    renderStepOnStage(overlay, step, stepIdx, steps.length, false);
+    syncStageMediaForStep(step, () => {
+      if (seq !== overlayRenderSeq) return;
+      syncViewportSize();
+      renderStepOnStage(overlay, step, stepIdx, steps.length, false);
+      refreshIcons(overlay);
+      if (screenOverlay) refreshIcons(screenOverlay);
+    });
   } else {
     const step = steps[state.previewStepIndex];
     if (!state.previewWaitingForClick) {
@@ -1787,13 +1821,14 @@ function renderHotspotOverlay() {
       syncViewportSize();
       return;
     }
-    syncStageMediaForStep(step);
-    syncViewportSize();
-    renderStepOnStage(overlay, step, state.previewStepIndex, steps.length, true);
+    syncStageMediaForStep(step, () => {
+      if (seq !== overlayRenderSeq) return;
+      syncViewportSize();
+      renderStepOnStage(overlay, step, state.previewStepIndex, steps.length, true);
+      refreshIcons(overlay);
+      if (screenOverlay) refreshIcons(screenOverlay);
+    });
   }
-
-  refreshIcons(overlay);
-  if (screenOverlay) refreshIcons(screenOverlay);
 }
 
 function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {

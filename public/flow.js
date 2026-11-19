@@ -456,6 +456,12 @@ function autoLayoutFlowNodes() {
 
 function startFlowPreview() {
   if (!state.activeDemo) return;
+  (state.activeDemo.nodes || []).forEach(n => {
+    if (n && n.imageUrl) {
+      const pre = new Image();
+      pre.src = n.imageUrl;
+    }
+  });
   flowState.previewNodeId = state.activeDemo.startNodeId || state.activeDemo.nodes?.[0]?.id || null;
   flowState.previewHistory = [];
   renderFlowPreview();
