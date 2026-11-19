@@ -197,6 +197,11 @@ function renderFlowCanvas() {
     header.addEventListener('pointerdown', e => {
       e.stopPropagation();
       flowState.selectedNodeId = node.id;
+      if (!node.hotspots.some(h => h.id === flowState.selectedHotspotId)) {
+        flowState.selectedHotspotId = node.hotspots[0]?.id || null;
+      }
+      layer.querySelectorAll('.flow-node').forEach(n => n.classList.toggle('selected', n.dataset.nodeId === node.id));
+      renderFlowInspector();
       flowState.draggingNode = {
         nodeId: node.id,
         startClientX: e.clientX,
@@ -893,4 +898,8 @@ function bindFlowEvents() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', bindFlowEvents);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bindFlowEvents);
+} else {
+  bindFlowEvents();
+}
