@@ -1181,6 +1181,7 @@ function demoHasAnyMedia(demo = state.activeDemo) {
 
 function resolveStepImageUrl(step) {
   if (step && step.imageUrl) return step.imageUrl;
+  if (step && getStepType(step) === 'screen') return '';
   if (!demoHasVideo(state.activeDemo) && demoHasScreenshots(state.activeDemo)) {
     const fallbackStep = state.activeDemo.steps.find(s => s && s.imageUrl);
     return fallbackStep ? fallbackStep.imageUrl : '';
@@ -1260,6 +1261,9 @@ function syncStageMediaForStep(step, onReady = null) {
       state.videoAspectRatio = video.videoWidth / video.videoHeight;
       syncViewportSize();
     }
+  } else {
+    video.classList.add('hidden');
+    canvas.classList.add('hidden');
   }
   if (onReady) onReady();
 }
@@ -1653,13 +1657,14 @@ function renderInspectorPanel() {
   const shotStatus = document.getElementById('step-screenshot-status');
   const timestampGroup = document.getElementById('step-timestamp-group');
 
-  if (shotBtnLabel) shotBtnLabel.textContent = hasShot ? 'Replace Screenshot' : 'Upload Screenshot';
-  if (clearShotBtn) clearShotBtn.classList.toggle('hidden', !hasShot || !hasVideo);
+  const isScreen = stepType === 'screen';
+  if (shotBtnLabel) shotBtnLabel.textContent = hasShot ? 'Replace Screenshot' : (isScreen ? 'Add Image (50/50)' : 'Upload Screenshot');
+  if (clearShotBtn) clearShotBtn.classList.toggle('hidden', !hasShot || (!hasVideo && !isScreen));
   if (snapFrameBtn) snapFrameBtn.classList.toggle('hidden', !hasVideo);
   if (shotStatus) {
     shotStatus.textContent = hasShot
       ? `Screenshot: ${step.imageName || 'Custom image attached'}`
-      : 'Or press ⌘V to paste a screenshot';
+      : (isScreen ? 'Optional: add an image for 50/50 split' : 'Or press ⌘V to paste a screenshot');
     shotStatus.classList.toggle('active-shot', hasShot);
   }
   if (timestampGroup) {
@@ -1667,7 +1672,6 @@ function renderInspectorPanel() {
   }
 
   // Toggle fields based on Hotspot vs Text Screen vs Explainer Tooltip
-  const isScreen = stepType === 'screen';
   const isExplainerType = stepType === 'explainer';
   const isHotspot = stepType === 'hotspot';
   const isTrace = isHotspot && step.style === 'trace';
@@ -2269,13 +2273,14 @@ function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot', options = {}
 
   const isExplainer = stepType === 'explainer' || Boolean(options.isExplainer);
   const isScreen = !isExplainer && stepType === 'screen';
+  const isIntro = isScreen && Boolean(options.isIntro);
   const hasSteps = state.activeDemo.steps && state.activeDemo.steps.length > 0;
-  const timestamp = (isScreen && !hasSteps) ? 0.0 : Number(mediaGetTime().toFixed(1));
+  const timestamp = isIntro ? 0.0 : ((isScreen && !hasSteps) ? 0.0 : Number(mediaGetTime().toFixed(1)));
   const numberedCount = (state.activeDemo.steps || []).filter(s => !isStepExplainer(s)).length;
   const stepNum = numberedCount + 1;
   const activeStep = getSelectedStep();
-  const inheritedImageUrl = (!demoHasVideo(state.activeDemo) && activeStep && activeStep.imageUrl) ? activeStep.imageUrl : '';
-  const inheritedImageName = (!demoHasVideo(state.activeDemo) && activeStep && activeStep.imageName) ? activeStep.imageName : '';
+  const inheritedImageUrl = (!isScreen && !demoHasVideo(state.activeDemo) && activeStep && activeStep.imageUrl) ? activeStep.imageUrl : '';
+  const inheritedImageName = (!isScreen && !demoHasVideo(state.activeDemo) && activeStep && activeStep.imageName) ? activeStep.imageName : '';
 
   const newStep = {
     id: `step-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
@@ -2288,14 +2293,16 @@ function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot', options = {}
     showBackBtn: true,
     showProgress: !isExplainer,
     screenLayout: 'default',
-    backdrop: 'blur',
-    kicker: isExplainer ? 'Explainer' : (isScreen ? (timestamp === 0 ? 'Welcome • Product Tour' : `Chapter ${stepNum}`) : ''),
+    backdrop: isIntro ? 'dark' : 'blur',
+    kicker: isExplainer ? 'Explainer' : (isIntro ? 'Welcome' : (isScreen ? (timestamp === 0 ? 'Welcome • Product Tour' : `Chapter ${stepNum}`) : '')),
     timestamp,
     title: isExplainer
       ? 'About this step'
-      : (isScreen
-        ? (timestamp === 0 ? `Welcome to ${state.activeDemo.title}` : 'Key Takeaway')
-        : `Step ${stepNum}: Click here`),
+      : (isIntro
+        ? `${state.activeDemo.title}`
+        : (isScreen
+          ? (timestamp === 0 ? `Welcome to ${state.activeDemo.title}` : 'Key Takeaway')
+          : `Step ${stepNum}: Click here`)),
     body: isExplainer
       ? 'Add context or background information here without counting this as a numbered step.'
       : (isScreen
@@ -2305,15 +2312,19 @@ function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot', options = {}
     y: Math.round(y * 10) / 10,
     style: 'beacon',
     placement: 'auto',
-    buttonText: isScreen && timestamp === 0 && !isExplainer ? 'Start Tour' : 'Continue',
+    buttonText: (isIntro || (isScreen && timestamp === 0 && !isExplainer)) ? 'Start Tour' : 'Continue',
     advanceOnHotspotClick: true,
     ctaUrl: '',
     imageUrl: inheritedImageUrl,
     imageName: inheritedImageName
   };
 
-  state.activeDemo.steps.push(newStep);
-  sortActiveSteps();
+  if (isIntro) {
+    state.activeDemo.steps.unshift(newStep);
+  } else {
+    state.activeDemo.steps.push(newStep);
+    sortActiveSteps();
+  }
   state.selectedStepId = newStep.id;
 
   renderEditorStepsList();
@@ -2322,7 +2333,7 @@ function addStepAtCurrentTime(x = 50, y = 50, stepType = 'hotspot', options = {}
   renderHotspotOverlay();
   scheduleAutoSave();
   refreshIcons();
-  showToast(isExplainer ? 'Added Explainer' : (isScreen ? 'Added Text Screen' : 'Added Hotspot Step'));
+  showToast(isIntro ? 'Added Intro Screen' : (isExplainer ? 'Added Explainer' : (isScreen ? 'Added Text Screen' : 'Added Hotspot Step')));
 }
 
 async function addScreenshotStepsFromFiles(fileList) {
@@ -3658,9 +3669,10 @@ function bindEvents() {
   }
   document.getElementById('btn-undo-step')?.addEventListener('click', undoStepEdit);
 
-  // Add Hotspot Step vs Add Intro/Text Screen vs Explainer Tooltip buttons
+  // Add Hotspot Step vs Intro Screen vs Text Screen vs Explainer Tooltip buttons
   document.getElementById('btn-add-step').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'hotspot'));
   document.getElementById('btn-add-step-timeline').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'hotspot'));
+  document.getElementById('btn-add-intro-step')?.addEventListener('click', () => addStepAtCurrentTime(50, 50, 'screen', { isIntro: true }));
   document.getElementById('btn-add-text-step').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'screen'));
   document.getElementById('btn-add-text-timeline').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'screen'));
   document.getElementById('btn-add-explainer-step').addEventListener('click', () => addStepAtCurrentTime(50, 50, 'explainer', { isExplainer: true }));
