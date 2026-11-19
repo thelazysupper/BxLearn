@@ -1261,6 +1261,7 @@ function openDemoInEditor(demoId, initialMode = 'edit') {
   document.getElementById('view-editor').classList.remove('hidden');
   document.getElementById('brand-home').classList.add('hidden');
   document.getElementById('btn-new-demo-top').classList.add('hidden');
+  document.getElementById('new-demo-dropdown')?.classList.add('hidden');
   document.getElementById('btn-back-library').classList.remove('hidden');
   document.getElementById('btn-share-preview')?.classList.remove('hidden');
   document.getElementById('editor-breadcrumb').classList.remove('hidden');
@@ -3004,6 +3005,7 @@ function bindEvents() {
     document.getElementById('view-library').classList.remove('hidden');
     document.getElementById('brand-home').classList.remove('hidden');
     document.getElementById('btn-new-demo-top').classList.remove('hidden');
+    document.getElementById('new-demo-dropdown')?.classList.remove('hidden');
     document.getElementById('btn-back-library').classList.add('hidden');
     document.getElementById('btn-share-preview')?.classList.add('hidden');
     document.getElementById('editor-breadcrumb').classList.add('hidden');

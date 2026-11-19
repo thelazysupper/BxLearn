@@ -784,6 +784,7 @@ svg.lucide {
 .app-shell.shared-preview-mode .breadcrumb-sep,
 .app-shell.shared-preview-mode #editor-mode-switcher-wrap,
 .app-shell.shared-preview-mode #btn-webflow-hub,
+.app-shell.shared-preview-mode #new-demo-dropdown,
 .app-shell.shared-preview-mode #btn-new-demo-top,
 .app-shell.shared-preview-mode #btn-logout,
 .app-shell.shared-preview-mode #save-status {
@@ -1992,7 +1993,7 @@ svg.lucide {
 }
 
 .preview-status-pill {
-  display: inline-flex;
+  display: none !important;
   align-items: center;
   gap: 6px;
   font-size: 12px;
