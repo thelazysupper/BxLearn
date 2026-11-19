@@ -63,10 +63,23 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
         <button type="button" id="btn-webflow-hub" class="icon-btn" title="Webflow Embed & Export">
           <i data-lucide="code-2"></i>
         </button>
-        <button type="button" id="btn-new-demo-top" class="btn btn-sm btn-primary" title="New Walkthrough">
-          <i data-lucide="plus"></i>
-          <span>New</span>
-        </button>
+        <div class="add-step-dropdown" id="new-demo-dropdown">
+          <button type="button" id="btn-new-demo-menu" class="btn btn-sm btn-primary" title="Create new">
+            <i data-lucide="plus"></i>
+            <span>New</span>
+            <i data-lucide="chevron-down"></i>
+          </button>
+          <div id="new-demo-menu" class="add-step-menu hidden">
+            <button type="button" id="btn-new-demo-top" class="add-step-menu-item">
+              <i data-lucide="play-circle"></i>
+              <span>Walkthrough</span>
+            </button>
+            <button type="button" id="btn-new-flow-demo" class="add-step-menu-item">
+              <i data-lucide="git-fork"></i>
+              <span>Interactive Demo (Canvas)</span>
+            </button>
+          </div>
+        </div>
         <button type="button" id="btn-logout" class="icon-btn" title="Sign Out">
           <i data-lucide="log-out"></i>
         </button>
@@ -545,6 +558,174 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
       </aside>
     </main>
 
+    <!-- VIEW 3: INTERACTIVE DEMO FLOW CANVAS & BRANCHING PLAYER -->
+    <main id="view-flow" class="flow-layout hidden">
+      <div class="flow-toolbar">
+        <div class="flow-toolbar-left">
+          <div class="segmented-control" id="flow-mode-switcher">
+            <button type="button" class="seg-btn active" data-flow-mode="canvas">
+              <i data-lucide="git-fork"></i>
+              <span>Canvas</span>
+            </button>
+            <button type="button" class="seg-btn" data-flow-mode="preview">
+              <i data-lucide="play"></i>
+              <span>Preview</span>
+            </button>
+          </div>
+          <span class="toolbar-v-divider"></span>
+          <label for="flow-add-screen-input" class="btn btn-xs btn-primary" title="Upload screen image(s)">
+            <i data-lucide="image-plus"></i>
+            <span>Add Screen(s)</span>
+          </label>
+          <input id="flow-add-screen-input" type="file" accept="image/png,image/jpeg,image/webp,image/*" multiple class="hidden" />
+          <button type="button" id="btn-flow-wf-assets" class="btn btn-xs btn-outline" title="Add screens from Webflow Assets">
+            <i data-lucide="folder-search"></i>
+            <span>Webflow Assets</span>
+          </button>
+          <button type="button" id="btn-flow-add-blank" class="btn btn-xs btn-outline" title="Add blank screen card">
+            <i data-lucide="square-plus"></i>
+            <span>Blank</span>
+          </button>
+        </div>
+        <div class="flow-toolbar-right">
+          <button type="button" id="btn-flow-autolayout" class="btn btn-xs btn-outline" title="Auto-arrange nodes">
+            <i data-lucide="sparkles"></i>
+            <span>Auto-Layout</span>
+          </button>
+          <div class="flow-zoom-controls">
+            <button type="button" id="btn-flow-zoom-out" class="icon-btn" title="Zoom out">
+              <i data-lucide="minus"></i>
+            </button>
+            <span id="flow-zoom-label" class="flow-zoom-label">100%</span>
+            <button type="button" id="btn-flow-zoom-in" class="icon-btn" title="Zoom in">
+              <i data-lucide="plus"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas + Inspector -->
+      <div id="flow-canvas-workspace" class="flow-canvas-workspace">
+        <div id="flow-canvas-viewport" class="flow-canvas-viewport">
+          <div id="flow-canvas-world" class="flow-canvas-world">
+            <svg id="flow-connectors-svg" class="flow-connectors-svg">
+              <defs>
+                <marker id="flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 8 5 L 0 9 z" fill="#0076DD" />
+                </marker>
+                <marker id="flow-arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1 L 8 5 L 0 9 z" fill="#0F172A" />
+                </marker>
+              </defs>
+            </svg>
+            <div id="flow-nodes-layer" class="flow-nodes-layer"></div>
+          </div>
+          <div class="flow-canvas-hint">Drag nodes to arrange • Drag from a hotspot dot to connect • Drag background to pan</div>
+        </div>
+
+        <aside id="flow-inspector" class="inspector-sidebar flow-inspector">
+          <div class="panel-header">
+            <div class="inspector-header-left">
+              <h2>Screen</h2>
+              <span id="flow-start-badge" class="step-badge hidden">Start</span>
+            </div>
+            <button type="button" id="btn-flow-delete-node" class="icon-btn text-danger" title="Delete Screen">
+              <i data-lucide="trash-2"></i>
+            </button>
+          </div>
+
+          <div id="flow-inspector-empty" class="inspector-empty">
+            <i data-lucide="git-fork"></i>
+            <p>Select or add a screen on the canvas to draw clickable hotspots and connect paths.</p>
+          </div>
+
+          <div id="flow-inspector-form" class="inspector-form hidden">
+            <div class="form-group">
+              <label for="flow-node-title-input">Screen Name</label>
+              <input id="flow-node-title-input" type="text" placeholder="e.g. Dashboard" />
+            </div>
+
+            <div class="form-group">
+              <div class="flow-inspector-actions-row">
+                <button type="button" id="btn-flow-set-start" class="btn btn-xs btn-outline">
+                  <i data-lucide="flag"></i>
+                  <span>Set as Start</span>
+                </button>
+                <label for="flow-node-image-input" class="btn btn-xs btn-outline" title="Upload/Replace screen image">
+                  <i data-lucide="image"></i>
+                  <span>Image</span>
+                </label>
+                <input id="flow-node-image-input" type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" />
+                <button type="button" id="btn-flow-node-wf-assets" class="icon-btn" title="Pick from Webflow Assets">
+                  <i data-lucide="folder-search"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Clickable Hotspots <span class="flow-label-hint">(drag on image to draw)</span></label>
+              <div id="flow-stage-box" class="flow-stage-box">
+                <img id="flow-stage-img" class="flow-stage-img hidden" alt="" draggable="false" />
+                <div id="flow-stage-empty" class="flow-stage-empty">Upload or pick a screenshot</div>
+                <div id="flow-hotspot-draw-layer" class="flow-hotspot-draw-layer"></div>
+              </div>
+            </div>
+
+            <div id="flow-hotspot-props" class="flow-hotspot-props hidden">
+              <div class="flow-hotspot-props-header">
+                <strong>Selected Hotspot</strong>
+                <button type="button" id="btn-flow-delete-hotspot" class="icon-btn text-danger" title="Delete Hotspot">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
+              <div class="form-group">
+                <label for="flow-hs-label-input">Label</label>
+                <input id="flow-hs-label-input" type="text" placeholder="e.g. Open Mottak" />
+              </div>
+              <div class="form-group">
+                <label for="flow-hs-target-select">Go To Screen</label>
+                <select id="flow-hs-target-select"></select>
+              </div>
+              <div class="form-group">
+                <label for="flow-hs-tooltip-input">Hover Tooltip (optional)</label>
+                <input id="flow-hs-tooltip-input" type="text" placeholder="Optional hint on hover..." />
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <!-- Branching Interactive Preview Player -->
+      <div id="flow-preview-workspace" class="flow-preview-workspace hidden">
+        <div id="flow-preview-stage-wrap" class="stage-viewport-wrap">
+          <div id="flow-preview-backdrop" class="stage-backdrop-frame">
+            <div id="flow-preview-inner" class="video-viewport">
+              <div class="viewport-media-clip">
+                <img id="flow-preview-img" class="demo-step-image" alt="" draggable="false" />
+              </div>
+              <div id="flow-preview-hotspots" class="hotspot-overlay"></div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-player-bar">
+          <div class="preview-bar-left">
+            <button type="button" id="btn-flow-preview-restart" class="icon-btn" title="Restart">
+              <i data-lucide="rotate-ccw"></i>
+            </button>
+            <button type="button" id="btn-flow-preview-back" class="icon-btn" title="Back">
+              <i data-lucide="arrow-left"></i>
+            </button>
+            <span id="flow-preview-status" class="preview-status-pill">Start</span>
+          </div>
+          <div class="preview-bar-right">
+            <button type="button" id="btn-flow-preview-fullscreen" class="icon-btn" title="Fullscreen">
+              <i data-lucide="maximize-2"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
     <!-- MODAL: WEBFLOW EXPORT & EMBED -->
     <div id="modal-webflow" class="modal-backdrop hidden">
       <div class="modal-card modal-lg">
@@ -771,5 +952,6 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
     window.__BXLEARN_BASE__ = base;
   </script>
   <script is:inline src={`${base}/app.js`}></script>
+  <script is:inline src={`${base}/flow.js`}></script>
 </body>
 </html>

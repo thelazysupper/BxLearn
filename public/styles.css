@@ -2708,3 +2708,432 @@ svg.lucide {
   color: var(--body-color);
   font-weight: 500;
 }
+
+
+/* =========================================================
+   VIEW 3: INTERACTIVE DEMO FLOW CANVAS & BRANCHING PLAYER
+   ========================================================= */
+.flow-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-canvas);
+}
+
+.flow-toolbar {
+  height: 46px;
+  padding: 0 14px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.flow-toolbar-left,
+.flow-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flow-zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
+  background: var(--bg-surface);
+}
+
+.flow-zoom-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--heading-color);
+  min-width: 38px;
+  text-align: center;
+}
+
+.flow-canvas-workspace {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 310px;
+  overflow: hidden;
+}
+
+.flow-canvas-viewport {
+  position: relative;
+  overflow: hidden;
+  background-color: #F4F7FA;
+  background-image: radial-gradient(#CBD5E1 1px, transparent 1px);
+  background-size: 20px 20px;
+  cursor: grab;
+  user-select: none;
+}
+
+.flow-canvas-viewport.is-panning {
+  cursor: grabbing;
+}
+
+.flow-canvas-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4000px;
+  height: 3000px;
+  transform-origin: 0 0;
+}
+
+.flow-connectors-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 1;
+}
+
+.flow-connector-path {
+  fill: none;
+  stroke: #0076DD;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  pointer-events: stroke;
+  cursor: pointer;
+  transition: stroke 0.14s, stroke-width 0.14s;
+}
+
+.flow-connector-path:hover {
+  stroke: #0F172A;
+  stroke-width: 3;
+}
+
+.flow-connector-draft {
+  fill: none;
+  stroke: #0076DD;
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  pointer-events: none;
+}
+
+.flow-nodes-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.flow-node {
+  position: absolute;
+  width: 220px;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.14s, box-shadow 0.14s;
+}
+
+.flow-node.selected {
+  border-color: var(--primary);
+  box-shadow: 0 10px 28px rgba(0, 118, 221, 0.18), 0 0 0 2px rgba(0, 118, 221, 0.18);
+}
+
+.flow-node-header {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  cursor: grab;
+  background: var(--bg-subtle);
+  border-radius: 10px 10px 0 0;
+}
+
+.flow-node-header:active {
+  cursor: grabbing;
+}
+
+.flow-node-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--heading-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.flow-node-start-pill {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 99px;
+  background: var(--primary);
+  color: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.flow-node-thumb-wrap {
+  position: relative;
+  height: 112px;
+  background: #0B2036;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.flow-node-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.flow-node-thumb-empty {
+  font-size: 11px;
+  color: #94A3B8;
+}
+
+.flow-node-ports {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.flow-node-port-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  font-size: 11.5px;
+  color: var(--heading-color);
+}
+
+.flow-node-port-row.is-empty {
+  color: var(--muted-color);
+  background: transparent;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.flow-port-in {
+  position: absolute;
+  left: -7px;
+  top: 62px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 2px solid #64748B;
+  z-index: 4;
+}
+
+.flow-node.is-connect-target .flow-port-in {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  transform: scale(1.25);
+}
+
+.flow-port-out {
+  position: absolute;
+  right: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 0 0 1px var(--primary);
+  cursor: crosshair;
+  z-index: 4;
+  transition: transform 0.12s;
+}
+
+.flow-port-out:hover {
+  transform: translateY(-50%) scale(1.25);
+}
+
+.flow-canvas-hint {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border-color);
+  border-radius: 99px;
+  padding: 4px 12px;
+  font-size: 11px;
+  color: var(--muted-color);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.flow-inspector {
+  width: 100%;
+  border-left: 1px solid var(--border-color);
+}
+
+.flow-inspector-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.flow-label-hint {
+  font-weight: 400;
+  color: var(--muted-color);
+  font-size: 11px;
+}
+
+.flow-stage-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #07192C;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: crosshair;
+}
+
+.flow-stage-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+.flow-stage-empty {
+  font-size: 11.5px;
+  color: #94A3B8;
+  pointer-events: none;
+}
+
+.flow-hotspot-draw-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.flow-hs-box {
+  position: absolute;
+  border: 2px solid #0076DD;
+  background: rgba(0, 118, 221, 0.16);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.flow-hs-box.selected {
+  border-color: #F59E0B;
+  background: rgba(245, 158, 11, 0.22);
+}
+
+.flow-hs-tag {
+  position: absolute;
+  top: -18px;
+  left: 0;
+  background: #0076DD;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.flow-hs-box.selected .flow-hs-tag {
+  background: #D97706;
+}
+
+.flow-hotspot-props {
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.flow-hotspot-props-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--heading-color);
+}
+
+.flow-preview-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.flow-preview-hotspot {
+  position: absolute;
+  border: 2px solid rgba(0, 118, 221, 0.85);
+  background: rgba(0, 118, 221, 0.14);
+  border-radius: 7px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+  box-shadow: 0 0 0 4px rgba(0, 118, 221, 0.18);
+}
+
+.flow-preview-hotspot:hover {
+  background: rgba(0, 118, 221, 0.26);
+  box-shadow: 0 0 0 7px rgba(0, 118, 221, 0.24);
+}
+
+.flow-preview-hotspot-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #00182C;
+  color: #FFFFFF;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s;
+  box-shadow: var(--shadow-md);
+}
+
+.flow-preview-hotspot:hover .flow-preview-hotspot-tip {
+  opacity: 1;
+}
+
+.demo-kind-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(0, 118, 221, 0.1);
+  color: var(--primary);
+}

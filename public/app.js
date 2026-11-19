@@ -1070,6 +1070,9 @@ function renderLibraryView() {
       const folderShort = demo.folderPath ? demo.folderPath.split('/').pop() : 'Unfiled';
       const card = document.createElement('div');
       card.className = 'demo-card';
+      const isFlow = demo.kind === 'flow';
+      const itemCount = isFlow ? (demo.nodes?.length || 0) : stepCount;
+      const itemLabel = isFlow ? (itemCount === 1 ? 'screen' : 'screens') : (itemCount === 1 ? 'step' : 'steps');
       card.innerHTML = `
         <div class="demo-card-preview" data-action="open">
           <div class="demo-card-preview-mock">
@@ -1077,15 +1080,15 @@ function renderLibraryView() {
             <div class="mock-bars"><div></div><div></div></div>
             <div class="mock-hotspot-dot" style="left:${firstHotspot.x || 50}%; top:${firstHotspot.y || 50}%;"></div>
           </div>
-          <span class="demo-card-steps-pill">${stepCount} ${stepCount === 1 ? 'step' : 'steps'}</span>
+          <span class="demo-card-steps-pill">${isFlow ? 'Flow • ' : ''}${itemCount} ${itemLabel}</span>
         </div>
         <div class="demo-card-body">
-          <div class="demo-card-folder">${escapeHtml(folderShort)}</div>
+          <div class="demo-card-folder">${escapeHtml(folderShort)} ${isFlow ? '<span class="demo-kind-badge">Interactive</span>' : ''}</div>
           <h3 class="demo-card-title" data-action="open">${escapeHtml(demo.title)}</h3>
-          <p class="demo-card-desc">${escapeHtml(demo.description || 'Interactive walkthrough')}</p>
+          <p class="demo-card-desc">${escapeHtml(demo.description || (isFlow ? 'Interactive branching demo' : 'Interactive walkthrough'))}</p>
         </div>
         <div class="demo-card-footer">
-          <button type="button" class="btn btn-xs btn-ghost" data-action="preview" title="Play Walkthrough">
+          <button type="button" class="btn btn-xs btn-ghost" data-action="preview" title="${isFlow ? 'Play Interactive Demo' : 'Play Walkthrough'}">
             <i data-lucide="play"></i>
             <span>Play</span>
           </button>
@@ -1104,10 +1107,14 @@ function renderLibraryView() {
       `;
 
       card.querySelectorAll('[data-action="open"], [data-action="edit"]').forEach(el => {
-        el.addEventListener('click', () => openDemoInEditor(demo.id, 'edit'));
+        el.addEventListener('click', () => {
+          if (isFlow && typeof openFlowDemo === 'function') openFlowDemo(demo.id, 'canvas');
+          else openDemoInEditor(demo.id, 'edit');
+        });
       });
       card.querySelector('[data-action="preview"]').addEventListener('click', () => {
-        openDemoInEditor(demo.id, 'preview');
+        if (isFlow && typeof openFlowDemo === 'function') openFlowDemo(demo.id, 'preview');
+        else openDemoInEditor(demo.id, 'preview');
       });
       card.querySelector('[data-action="webflow"]').addEventListener('click', () => {
         openWebflowModal(demo.id);
@@ -2418,6 +2425,9 @@ function openWebflowModal(preselectedDemoId = null) {
 
 function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
   if (!demo) return '<!-- No walkthrough selected -->';
+  if (demo.kind === 'flow' && typeof generateFlowWebflowSnippet === 'function') {
+    return generateFlowWebflowSnippet(demo);
+  }
   const safeDemo = {
     id: demo.id,
     title: demo.title,
@@ -2989,6 +2999,7 @@ function bindEvents() {
   const goHome = () => {
     mediaPause();
     state.currentView = 'library';
+    if (typeof closeFlowView === 'function') closeFlowView();
     document.getElementById('view-editor').classList.add('hidden');
     document.getElementById('view-library').classList.remove('hidden');
     document.getElementById('brand-home').classList.remove('hidden');
@@ -4320,7 +4331,41 @@ function renderWebflowAssetsGrid() {
     `;
 
     card.addEventListener('click', () => {
-      if (wfAssetsState.mode === 'replace-step') {
+      if (wfAssetsState.mode === 'flow-replace') {
+    const asset = chosen[0];
+    const url = getWebflowAssetUrl(asset);
+    const node = typeof getSelectedFlowNode === 'function' ? getSelectedFlowNode() : null;
+    if (node && url) {
+      node.imageUrl = url;
+      renderFlowCanvas();
+      renderFlowInspector();
+      scheduleAutoSave();
+      showToast('Updated screen image from Webflow Assets');
+    }
+  } else if (wfAssetsState.mode === 'flow-add') {
+    for (const asset of chosen) {
+      const url = getWebflowAssetUrl(asset);
+      const name = (asset.displayName || asset.originalFileName || 'Screen').replace(/\.[^.]+$/, '');
+      if (!url || !isImageAssetUrl(url, asset.contentType || '')) continue;
+      const count = (state.activeDemo.nodes || []).length;
+      const newNode = {
+        id: `node-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+        title: name,
+        imageUrl: url,
+        flowX: 120 + (count % 4) * 280,
+        flowY: 120 + Math.floor(count / 4) * 240,
+        hotspots: []
+      };
+      state.activeDemo.nodes.push(newNode);
+      if (!state.activeDemo.startNodeId) state.activeDemo.startNodeId = newNode.id;
+      if (typeof flowState !== 'undefined') flowState.selectedNodeId = newNode.id;
+    }
+    if (typeof renderFlowCanvas === 'function') renderFlowCanvas();
+    if (typeof renderFlowInspector === 'function') renderFlowInspector();
+    scheduleAutoSave();
+    refreshIcons();
+    showToast('Added screen(s) from Webflow Assets');
+  } else if (wfAssetsState.mode === 'replace-step') {
         wfAssetsState.selectedIds.clear();
         wfAssetsState.selectedIds.add(asset.id);
       } else {
@@ -4357,7 +4402,41 @@ async function insertSelectedWebflowAssets() {
   const chosen = wfAssetsState.assets.filter(a => wfAssetsState.selectedIds.has(a.id));
   if (chosen.length === 0) return;
 
-  if (wfAssetsState.mode === 'replace-step') {
+  if (wfAssetsState.mode === 'flow-replace') {
+    const asset = chosen[0];
+    const url = getWebflowAssetUrl(asset);
+    const node = typeof getSelectedFlowNode === 'function' ? getSelectedFlowNode() : null;
+    if (node && url) {
+      node.imageUrl = url;
+      renderFlowCanvas();
+      renderFlowInspector();
+      scheduleAutoSave();
+      showToast('Updated screen image from Webflow Assets');
+    }
+  } else if (wfAssetsState.mode === 'flow-add') {
+    for (const asset of chosen) {
+      const url = getWebflowAssetUrl(asset);
+      const name = (asset.displayName || asset.originalFileName || 'Screen').replace(/\.[^.]+$/, '');
+      if (!url || !isImageAssetUrl(url, asset.contentType || '')) continue;
+      const count = (state.activeDemo.nodes || []).length;
+      const newNode = {
+        id: `node-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+        title: name,
+        imageUrl: url,
+        flowX: 120 + (count % 4) * 280,
+        flowY: 120 + Math.floor(count / 4) * 240,
+        hotspots: []
+      };
+      state.activeDemo.nodes.push(newNode);
+      if (!state.activeDemo.startNodeId) state.activeDemo.startNodeId = newNode.id;
+      if (typeof flowState !== 'undefined') flowState.selectedNodeId = newNode.id;
+    }
+    if (typeof renderFlowCanvas === 'function') renderFlowCanvas();
+    if (typeof renderFlowInspector === 'function') renderFlowInspector();
+    scheduleAutoSave();
+    refreshIcons();
+    showToast('Added screen(s) from Webflow Assets');
+  } else if (wfAssetsState.mode === 'replace-step') {
     const asset = chosen[0];
     const url = getWebflowAssetUrl(asset);
     const name = asset.displayName || asset.originalFileName || 'Webflow Asset';
@@ -4480,6 +4559,28 @@ function base64UrlToBytes(str) {
 }
 
 async function encodeSharePayload(demo) {
+  if (demo.kind === 'flow') {
+    const flowMinimal = {
+      v: 2,
+      k: 'flow',
+      id: demo.id,
+      t: demo.title || 'Interactive Demo',
+      sn: demo.startNodeId || '',
+      n: demo.nodes || []
+    };
+    const jsonBytes = new TextEncoder().encode(JSON.stringify(flowMinimal));
+    if (typeof CompressionStream === 'function') {
+      try {
+        const cs = new CompressionStream('deflate-raw');
+        const writer = cs.writable.getWriter();
+        writer.write(jsonBytes);
+        writer.close();
+        const compressed = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+        return 'z_' + bytesToBase64Url(compressed);
+      } catch {}
+    }
+    return 'u_' + bytesToBase64Url(jsonBytes);
+  }
   const urlTable = [];
   const urlIndexMap = new Map();
   const compactSteps = (demo.steps || []).map(st => {
@@ -4554,6 +4655,16 @@ async function encodeSharePayload(demo) {
 
 function expandSharePayload(parsed) {
   if (!parsed || parsed.v !== 2) return parsed;
+  if (parsed.k === 'flow') {
+    return {
+      id: parsed.id || 'shared-flow',
+      kind: 'flow',
+      title: parsed.t || 'Interactive Demo',
+      startNodeId: parsed.sn || '',
+      nodes: parsed.n || [],
+      steps: []
+    };
+  }
   const urls = Array.isArray(parsed.u)
     ? parsed.u.map(u => (typeof u === 'string' && u.startsWith('~wf/'))
       ? 'https://cdn.prod.website-files.com/' + u.slice(4)
@@ -4703,7 +4814,11 @@ function openSharedPreviewDemo(demo) {
   const existingIdx = state.demos.findIndex(d => d.id === demo.id);
   if (existingIdx === -1) state.demos.unshift(demo);
   else state.demos[existingIdx] = demo;
-  openDemoInEditor(demo.id, 'preview');
+  if (demo.kind === 'flow' && typeof openFlowDemo === 'function') {
+    openFlowDemo(demo.id, 'preview');
+  } else {
+    openDemoInEditor(demo.id, 'preview');
+  }
 }
 
 function isStudioAuthenticated() {
