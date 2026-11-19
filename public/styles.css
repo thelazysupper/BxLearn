@@ -3065,6 +3065,46 @@ svg.lucide {
   background: #D97706;
 }
 
+.flow-hs-del-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted-color);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 3px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+}
+
+.flow-node-port-row:hover .flow-hs-del-btn,
+.flow-hs-del-btn:focus-visible {
+  opacity: 1;
+}
+
+.flow-hs-del-btn:hover {
+  color: #DC2626;
+}
+
+.flow-hs-box-del {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #FFFFFF;
+  background: #DC2626;
+  color: #FFFFFF;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-xs);
+}
+
 .flow-hotspot-props {
   border-top: 1px solid var(--border-color);
   padding-top: 12px;

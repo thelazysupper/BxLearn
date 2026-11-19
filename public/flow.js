@@ -161,8 +161,9 @@ function renderFlowCanvas() {
           const target = nodes.find(n => n.id === hs.targetNodeId);
           return `
             <div class="flow-node-port-row" data-hs-id="${hs.id}">
-              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(hs.label || 'Hotspot')}</span>
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${escapeHtml(hs.label || 'Hotspot')}</span>
               <span style="font-size:10px;color:var(--muted-color);flex-shrink:0;">${target ? `→ ${escapeHtml(target.title || 'Screen')}` : 'Unlinked'}</span>
+              <button type="button" class="flow-hs-del-btn" data-del-node="${node.id}" data-del-hs="${hs.id}" title="Delete hotspot">×</button>
               <div class="flow-port-out" data-from-node="${node.id}" data-from-hs="${hs.id}" title="Drag to connect"></div>
             </div>
           `;
@@ -184,13 +185,23 @@ function renderFlowCanvas() {
     `;
 
     el.addEventListener('pointerdown', e => {
-      if (e.target.closest('.flow-port-out')) return;
+      if (e.target.closest('.flow-port-out') || e.target.closest('.flow-hs-del-btn')) return;
       flowState.selectedNodeId = node.id;
-      if (!node.hotspots.some(h => h.id === flowState.selectedHotspotId)) {
+      const clickedRow = e.target.closest('.flow-node-port-row[data-hs-id]');
+      if (clickedRow) {
+        flowState.selectedHotspotId = clickedRow.dataset.hsId;
+      } else if (!node.hotspots.some(h => h.id === flowState.selectedHotspotId)) {
         flowState.selectedHotspotId = node.hotspots[0]?.id || null;
       }
       layer.querySelectorAll('.flow-node').forEach(n => n.classList.toggle('selected', n.dataset.nodeId === node.id));
       renderFlowInspector();
+    });
+
+    el.querySelectorAll('.flow-hs-del-btn').forEach(delBtn => {
+      delBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        deleteFlowHotspot(delBtn.dataset.delNode, delBtn.dataset.delHs);
+      });
     });
 
     const header = el.querySelector('.flow-node-header');
@@ -283,6 +294,21 @@ function renderFlowConnectors(draftEnd = null) {
   }
 }
 
+function deleteFlowHotspot(nodeId, hotspotId) {
+  if (!state.activeDemo || !hotspotId) return;
+  const node = (state.activeDemo.nodes || []).find(n => n.id === nodeId) || getSelectedFlowNode();
+  if (!node) return;
+  node.hotspots = (node.hotspots || []).filter(h => h.id !== hotspotId);
+  if (flowState.selectedHotspotId === hotspotId) {
+    flowState.selectedHotspotId = node.hotspots[0]?.id || null;
+  }
+  renderFlowCanvas();
+  renderFlowInspector();
+  scheduleAutoSave();
+  refreshIcons();
+  showToast('Hotspot deleted');
+}
+
 function renderFlowInspector() {
   const node = getSelectedFlowNode();
   const emptyEl = document.getElementById('flow-inspector-empty');
@@ -332,13 +358,26 @@ function renderFlowInspector() {
   drawLayer.innerHTML = '';
   (node.hotspots || []).forEach(hs => {
     const box = document.createElement('div');
-    box.className = `flow-hs-box ${hs.id === flowState.selectedHotspotId ? 'selected' : ''}`;
+    const isSel = hs.id === flowState.selectedHotspotId;
+    box.className = `flow-hs-box ${isSel ? 'selected' : ''}`;
     box.style.left = `${hs.x}%`;
     box.style.top = `${hs.y}%`;
     box.style.width = `${hs.w}%`;
     box.style.height = `${hs.h}%`;
-    box.innerHTML = `<span class="flow-hs-tag">${escapeHtml(hs.label || 'Hotspot')}</span>`;
+    box.innerHTML = `
+      <span class="flow-hs-tag">${escapeHtml(hs.label || 'Hotspot')}</span>
+      ${isSel ? `<button type="button" class="flow-hs-box-del" title="Delete hotspot">×</button>` : ''}
+    `;
+    const boxDel = box.querySelector('.flow-hs-box-del');
+    if (boxDel) {
+      boxDel.addEventListener('pointerdown', e => e.stopPropagation());
+      boxDel.addEventListener('click', e => {
+        e.stopPropagation();
+        deleteFlowHotspot(node.id, hs.id);
+      });
+    }
     box.addEventListener('pointerdown', e => {
+      if (e.target.closest('.flow-hs-box-del')) return;
       e.stopPropagation();
       flowState.selectedHotspotId = hs.id;
       renderFlowInspector();
@@ -777,12 +816,17 @@ function bindFlowEvents() {
 
   document.getElementById('btn-flow-delete-hotspot')?.addEventListener('click', () => {
     const node = getSelectedFlowNode();
-    if (!node) return;
-    node.hotspots = (node.hotspots || []).filter(h => h.id !== flowState.selectedHotspotId);
-    flowState.selectedHotspotId = node.hotspots[0]?.id || null;
-    renderFlowCanvas();
-    renderFlowInspector();
-    scheduleAutoSave();
+    if (!node || !flowState.selectedHotspotId) return;
+    deleteFlowHotspot(node.id, flowState.selectedHotspotId);
+  });
+
+  window.addEventListener('keydown', e => {
+    if (state.currentView !== 'flow' || flowState.mode !== 'canvas') return;
+    if (e.target.matches('input, textarea, select')) return;
+    if ((e.key === 'Delete' || e.key === 'Backspace') && flowState.selectedHotspotId && flowState.selectedNodeId) {
+      e.preventDefault();
+      deleteFlowHotspot(flowState.selectedNodeId, flowState.selectedHotspotId);
+    }
   });
 
   // Canvas pan, node drag, connector drag
