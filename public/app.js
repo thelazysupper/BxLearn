@@ -4331,41 +4331,7 @@ function renderWebflowAssetsGrid() {
     `;
 
     card.addEventListener('click', () => {
-      if (wfAssetsState.mode === 'flow-replace') {
-    const asset = chosen[0];
-    const url = getWebflowAssetUrl(asset);
-    const node = typeof getSelectedFlowNode === 'function' ? getSelectedFlowNode() : null;
-    if (node && url) {
-      node.imageUrl = url;
-      renderFlowCanvas();
-      renderFlowInspector();
-      scheduleAutoSave();
-      showToast('Updated screen image from Webflow Assets');
-    }
-  } else if (wfAssetsState.mode === 'flow-add') {
-    for (const asset of chosen) {
-      const url = getWebflowAssetUrl(asset);
-      const name = (asset.displayName || asset.originalFileName || 'Screen').replace(/\.[^.]+$/, '');
-      if (!url || !isImageAssetUrl(url, asset.contentType || '')) continue;
-      const count = (state.activeDemo.nodes || []).length;
-      const newNode = {
-        id: `node-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-        title: name,
-        imageUrl: url,
-        flowX: 120 + (count % 4) * 280,
-        flowY: 120 + Math.floor(count / 4) * 240,
-        hotspots: []
-      };
-      state.activeDemo.nodes.push(newNode);
-      if (!state.activeDemo.startNodeId) state.activeDemo.startNodeId = newNode.id;
-      if (typeof flowState !== 'undefined') flowState.selectedNodeId = newNode.id;
-    }
-    if (typeof renderFlowCanvas === 'function') renderFlowCanvas();
-    if (typeof renderFlowInspector === 'function') renderFlowInspector();
-    scheduleAutoSave();
-    refreshIcons();
-    showToast('Added screen(s) from Webflow Assets');
-  } else if (wfAssetsState.mode === 'replace-step') {
+      if (wfAssetsState.mode === 'replace-step' || wfAssetsState.mode === 'flow-replace') {
         wfAssetsState.selectedIds.clear();
         wfAssetsState.selectedIds.add(asset.id);
       } else {
