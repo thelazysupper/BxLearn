@@ -263,6 +263,35 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
 
         <!-- Active Stage -->
         <div id="video-stage-container" class="video-stage-container">
+          <!-- Stage Quick Action Bar (Edit Mode) -->
+          <div id="stage-edit-toolbar" class="stage-edit-toolbar">
+            <button type="button" class="stage-tool-btn" data-stage-add="hotspot" title="Add Hotspot Step">
+              <i data-lucide="mouse-pointer-click"></i>
+              <span>Hotspot</span>
+            </button>
+            <button type="button" class="stage-tool-btn" data-stage-add="intro" title="Add Intro Screen">
+              <i data-lucide="sparkles"></i>
+              <span>Intro</span>
+            </button>
+            <button type="button" class="stage-tool-btn" data-stage-add="screen" title="Add Text Page">
+              <i data-lucide="layout-template"></i>
+              <span>Text Page</span>
+            </button>
+            <button type="button" class="stage-tool-btn" data-stage-add="explainer" title="Add Explainer Tooltip">
+              <i data-lucide="book-open"></i>
+              <span>Explainer</span>
+            </button>
+            <span class="toolbar-v-divider"></span>
+            <label for="screenshot-steps-input" class="stage-tool-btn" title="Upload Screenshot(s)">
+              <i data-lucide="upload"></i>
+              <span>Upload</span>
+            </label>
+            <button type="button" id="btn-stage-wf-assets" class="stage-tool-btn" title="Pick from Webflow Assets">
+              <i data-lucide="folder-search"></i>
+              <span>Assets</span>
+            </button>
+          </div>
+
           <!-- Constant 16:9 Backdrop Frame + Centered Aspect-Ratio Screen -->
           <div id="stage-viewport-wrap" class="stage-viewport-wrap">
             <div id="stage-backdrop-frame" class="stage-backdrop-frame">
@@ -472,6 +501,24 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
                 <label for="step-cta-url-input">CTA Link (optional)</label>
                 <input id="step-cta-url-input" type="url" placeholder="https://..." />
               </div>
+
+              <div class="form-group">
+                <label>Text Alignment</label>
+                <div class="type-pill-group type-pill-group-3" id="step-align-switcher">
+                  <button type="button" class="type-pill-btn" data-align="left" title="Align Left">
+                    <i data-lucide="align-left"></i>
+                    <span>Left</span>
+                  </button>
+                  <button type="button" class="type-pill-btn active" data-align="center" title="Align Center">
+                    <i data-lucide="align-center"></i>
+                    <span>Center</span>
+                  </button>
+                  <button type="button" class="type-pill-btn" data-align="right" title="Align Right">
+                    <i data-lucide="align-right"></i>
+                    <span>Right</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </details>
 
@@ -482,9 +529,32 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
             </summary>
             <div class="inspector-section-body">
               <!-- Hotspot-only controls -->
-              <div id="hotspot-only-fields" class="form-row-2">
+              <div id="hotspot-only-fields" class="form-group" style="gap: 10px;">
                 <div class="form-group">
-                  <label for="step-placement-select">Tooltip</label>
+                  <label>Hotspot Style</label>
+                  <div class="hotspot-style-cards" id="step-style-cards">
+                    <button type="button" class="style-card-btn active" data-style="beacon">
+                      <i data-lucide="circle-dot"></i>
+                      <span>Beacon</span>
+                    </button>
+                    <button type="button" class="style-card-btn" data-style="ring">
+                      <i data-lucide="circle"></i>
+                      <span>Ring</span>
+                    </button>
+                    <button type="button" class="style-card-btn" data-style="trace">
+                      <i data-lucide="scan-line"></i>
+                      <span>Area</span>
+                    </button>
+                  </div>
+                  <select id="step-style-select" class="hidden">
+                    <option value="beacon">Beacon</option>
+                    <option value="ring">Ring</option>
+                    <option value="trace">Button Trace</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="step-placement-select">Tooltip Position</label>
                   <select id="step-placement-select">
                     <option value="auto">Auto</option>
                     <option value="right">Right</option>
@@ -493,14 +563,32 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
                     <option value="top">Top</option>
                   </select>
                 </div>
+              </div>
+
+              <div class="form-row-2">
                 <div class="form-group">
-                  <label for="step-style-select">Hotspot Style</label>
-                  <select id="step-style-select">
-                    <option value="beacon">Beacon</option>
-                    <option value="ring">Ring</option>
-                    <option value="trace">Button Trace</option>
-                  </select>
+                  <label for="step-bg-color">Background</label>
+                  <div class="color-chip-input">
+                    <input id="step-bg-color" type="color" value="#ffffff" />
+                    <span id="step-bg-color-hex">#FFFFFF</span>
+                  </div>
                 </div>
+                <div class="form-group">
+                  <label for="step-text-color">Text</label>
+                  <div class="color-chip-input">
+                    <input id="step-text-color" type="color" value="#00182c" />
+                    <span id="step-text-color-hex">#00182C</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="step-radius-select">Border Radius</label>
+                <select id="step-radius-select">
+                  <option value="round">Rounded (12px)</option>
+                  <option value="sharp">Sharp (4px)</option>
+                  <option value="pill">Soft (20px)</option>
+                </select>
               </div>
 
               <!-- Hotspot tooltip visibility (Beacon / Ring / Trace) -->

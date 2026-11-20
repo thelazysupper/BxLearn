@@ -1528,6 +1528,51 @@ function getSelectedStep() {
   return state.activeDemo.steps.find(s => s.id === state.selectedStepId) || null;
 }
 
+function insertBlankStepAfter(index) {
+  if (!state.activeDemo) return;
+  pushUndoSnapshot();
+  const numberedCount = (state.activeDemo.steps || []).filter(s => !isStepExplainer(s)).length;
+  const prevStep = state.activeDemo.steps[index] || getSelectedStep();
+  const inheritedImageUrl = (!demoHasVideo(state.activeDemo) && prevStep && prevStep.imageUrl) ? prevStep.imageUrl : '';
+  const inheritedImageName = (!demoHasVideo(state.activeDemo) && prevStep && prevStep.imageName) ? prevStep.imageName : '';
+  const newStep = {
+    id: `step-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+    type: 'hotspot',
+    isExplainer: false,
+    showKicker: true,
+    showTitle: true,
+    showBody: true,
+    showPrimaryBtn: true,
+    showBackBtn: true,
+    showProgress: true,
+    screenLayout: 'default',
+    backdrop: 'blur',
+    kicker: '',
+    timestamp: Number(mediaGetTime().toFixed(1)),
+    title: `Step ${numberedCount + 1}: Click here`,
+    body: 'Click the highlighted hotspot to continue.',
+    x: 50,
+    y: 50,
+    style: 'beacon',
+    placement: 'auto',
+    buttonText: 'Continue',
+    advanceOnHotspotClick: true,
+    ctaUrl: '',
+    imageUrl: inheritedImageUrl,
+    imageName: inheritedImageName
+  };
+  state.activeDemo.steps.splice(index + 1, 0, newStep);
+  state.activeDemo.manualStepOrder = true;
+  state.selectedStepId = newStep.id;
+  renderEditorStepsList();
+  renderInspectorPanel();
+  renderTimelineMarkers();
+  renderHotspotOverlay();
+  scheduleAutoSave();
+  refreshIcons();
+  showToast('Added step');
+}
+
 function renderEditorStepsList() {
   const listEl = document.getElementById('steps-list');
   listEl.innerHTML = '';
@@ -1539,29 +1584,34 @@ function renderEditorStepsList() {
     const isScreen = getStepType(step) === 'screen';
     const pos = getNumberedStepPosition(state.activeDemo.steps, idx);
     const hasShot = Boolean(step.imageUrl);
-    const metaLabel = pos.isExplainer
-      ? (hasShot || !hasVideo ? 'Explainer' : `Explainer • ${formatSeconds(step.timestamp)}`)
-      : (hasShot ? 'Screenshot' : (hasVideo ? formatSeconds(step.timestamp) : `Step ${pos.number}`));
+    const titleText = step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`);
+
     const card = document.createElement('div');
-    card.className = `step-card ${step.id === state.selectedStepId ? 'active' : ''}`;
+    card.className = `step-thumb-card ${step.id === state.selectedStepId ? 'active' : ''}`;
     card.draggable = true;
     card.dataset.stepId = step.id;
     card.innerHTML = `
-      <span class="step-drag-handle" title="Drag to reorder">
-        <i data-lucide="grip-vertical"></i>
-      </span>
-      <div class="step-num-circle ${pos.isExplainer ? 'is-explainer' : ''}" title="${pos.isExplainer ? 'Explainer (not a step)' : (isScreen ? 'Intro / Text Screen' : (hasShot ? 'Screenshot Step' : 'Hotspot Step'))}">
-        ${pos.isExplainer ? '<i data-lucide="book-open"></i>' : (isScreen ? '<i data-lucide="layout-template"></i>' : pos.number)}
+      <div class="step-thumb-media">
+        ${hasShot
+          ? `<img src="${escapeHtml(step.imageUrl)}" alt="" loading="lazy" />`
+          : `<div class="step-thumb-screen-mock">${escapeHtml(isScreen ? (step.kicker || titleText) : (hasVideo ? formatSeconds(step.timestamp) : titleText))}</div>`}
+        <div class="step-thumb-badge ${pos.isExplainer ? 'is-explainer' : ''}" title="${pos.isExplainer ? 'Explainer (not a step)' : (isScreen ? 'Text Page' : 'Hotspot Step')}">
+          ${pos.isExplainer ? '<i data-lucide="book-open"></i>' : (isScreen ? '<i data-lucide="layout-template"></i>' : pos.number)}
+        </div>
+        <div class="step-thumb-actions">
+          <button type="button" class="step-thumb-act-btn step-dup-btn" data-dup-step="${step.id}" title="Duplicate">
+            <i data-lucide="copy"></i>
+          </button>
+          <button type="button" class="step-thumb-act-btn step-del-btn" data-del-step="${step.id}" title="Delete">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>
       </div>
-      ${hasShot ? `<img src="${escapeHtml(step.imageUrl)}" alt="" class="step-card-thumb" loading="lazy" />` : ''}
-      <div class="step-card-info">
-        <div class="step-card-title">${escapeHtml(step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`))}</div>
-        <span class="step-time-pill">${escapeHtml(metaLabel)}</span>
+      <div class="step-thumb-footer">
+        <div class="step-thumb-title">${escapeHtml(titleText)}</div>
       </div>
-      <button type="button" class="icon-btn step-dup-btn" data-dup-step="${step.id}" title="Duplicate">
-        <i data-lucide="copy"></i>
-      </button>
     `;
+
     card.addEventListener('dragstart', e => {
       draggedStepId = step.id;
       card.classList.add('is-dragging');
@@ -1576,7 +1626,7 @@ function renderEditorStepsList() {
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
       const rect = card.getBoundingClientRect();
       const isTop = (e.clientY - rect.top) < rect.height / 2;
-      listEl.querySelectorAll('.step-card').forEach(c => {
+      listEl.querySelectorAll('.step-thumb-card').forEach(c => {
         if (c !== card) c.classList.remove('drag-over-top', 'drag-over-bottom');
       });
       card.classList.toggle('drag-over-top', isTop);
@@ -1602,10 +1652,11 @@ function renderEditorStepsList() {
     });
     card.addEventListener('dragend', () => {
       draggedStepId = null;
-      listEl.querySelectorAll('.step-card').forEach(c => {
+      listEl.querySelectorAll('.step-thumb-card').forEach(c => {
         c.classList.remove('is-dragging', 'drag-over-top', 'drag-over-bottom');
       });
     });
+
     const dupBtn = card.querySelector('.step-dup-btn');
     if (dupBtn) {
       dupBtn.addEventListener('click', e => {
@@ -1613,6 +1664,25 @@ function renderEditorStepsList() {
         duplicateStep(step.id);
       });
     }
+    const delBtn = card.querySelector('.step-del-btn');
+    if (delBtn) {
+      delBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        pushUndoSnapshot();
+        state.activeDemo.steps = state.activeDemo.steps.filter(s => s.id !== step.id);
+        if (state.selectedStepId === step.id) {
+          state.selectedStepId = state.activeDemo.steps[Math.max(0, idx - 1)]?.id || null;
+        }
+        setupEditorVideoSource();
+        renderEditorStepsList();
+        renderInspectorPanel();
+        renderTimelineMarkers();
+        renderHotspotOverlay();
+        scheduleAutoSave();
+        refreshIcons();
+      });
+    }
+
     card.addEventListener('click', () => {
       state.selectedStepId = step.id;
       mediaPause();
@@ -1626,6 +1696,13 @@ function renderEditorStepsList() {
       refreshIcons();
     });
     listEl.appendChild(card);
+
+    const insertBtn = document.createElement('button');
+    insertBtn.type = 'button';
+    insertBtn.className = 'step-insert-btn';
+    insertBtn.innerHTML = `<i data-lucide="plus"></i><span>Add Step</span>`;
+    insertBtn.addEventListener('click', () => insertBlankStepAfter(idx));
+    listEl.appendChild(insertBtn);
   });
 }
 
@@ -1704,7 +1781,27 @@ function renderInspectorPanel() {
   document.getElementById('step-body-input').value = step.body || '';
   document.getElementById('step-timestamp-input').value = Number(step.timestamp || 0).toFixed(1);
   document.getElementById('step-placement-select').value = step.placement || 'auto';
-  document.getElementById('step-style-select').value = ['ring', 'trace'].includes(step.style) ? step.style : 'beacon';
+  const resolvedStyle = ['ring', 'trace'].includes(step.style) ? step.style : 'beacon';
+  document.getElementById('step-style-select').value = resolvedStyle;
+  document.querySelectorAll('#step-style-cards .style-card-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.style === resolvedStyle);
+  });
+  const resolvedAlign = step.textAlign || (isScreen ? 'center' : 'left');
+  document.querySelectorAll('#step-align-switcher .type-pill-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.align === resolvedAlign);
+  });
+  const bgColor = (step.cardBgColor || '#FFFFFF').toUpperCase();
+  const textColor = (step.cardTextColor || '#00182C').toUpperCase();
+  const bgInp = document.getElementById('step-bg-color');
+  const txtInp = document.getElementById('step-text-color');
+  const bgHex = document.getElementById('step-bg-color-hex');
+  const txtHex = document.getElementById('step-text-color-hex');
+  if (bgInp) bgInp.value = bgColor;
+  if (txtInp) txtInp.value = textColor;
+  if (bgHex) bgHex.textContent = bgColor;
+  if (txtHex) txtHex.textContent = textColor;
+  const radSel = document.getElementById('step-radius-select');
+  if (radSel) radSel.value = step.cardRadius || 'round';
   const showTipEl = document.getElementById('step-show-tooltip');
   if (showTipEl) showTipEl.checked = step.showTooltip !== false;
   const showKickerEl = document.getElementById('step-show-kicker');
@@ -1861,6 +1958,26 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
   const showAnyAction = (showBackBtn && stepIndex > 0) || Boolean(step.ctaUrl) || showPrimaryBtn;
   const showProgress = step.showProgress !== undefined ? Boolean(step.showProgress) : !pos.isExplainer;
 
+  const radiusPx = step.cardRadius === 'sharp' ? '4px' : (step.cardRadius === 'pill' ? '20px' : (stepType === 'screen' ? '16px' : '12px'));
+  const customBg = step.cardBgColor || '';
+  const customText = step.cardTextColor || '';
+  const applyCardCustomStyles = (el, defaultAlign) => {
+    if (!el) return;
+    const align = step.textAlign || defaultAlign;
+    el.style.textAlign = align;
+    el.style.alignItems = align === 'center' ? 'center' : (align === 'right' ? 'flex-end' : 'flex-start');
+    if (customBg) el.style.background = customBg;
+    if (customText) {
+      el.style.color = customText;
+      el.querySelectorAll('.text-screen-title, .text-screen-body, .tooltip-title, .tooltip-body').forEach(t => {
+        t.style.color = customText;
+      });
+    }
+    if (stepType !== 'screen' || step.screenLayout !== 'split') {
+      el.style.borderRadius = radiusPx;
+    }
+  };
+
   // CASE 1: INTRO / CHAPTER / OUTRO TEXT PAGE (Default Full-Stage OR 50/50 Split)
   if (stepType === 'screen') {
     const screenOverlay = document.getElementById('stage-screen-overlay') || overlay;
@@ -1894,6 +2011,7 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     `;
     screenEl.addEventListener('pointerdown', e => e.stopPropagation());
     screenEl.addEventListener('click', e => e.stopPropagation());
+    applyCardCustomStyles(screenEl.querySelector('.text-screen-card'), step.screenLayout === 'split' ? 'left' : 'center');
     bindStepCardNavigation(screenEl, stepIndex, totalSteps, isPreview);
     screenOverlay.appendChild(screenEl);
     return;
@@ -1946,6 +2064,7 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
       tooltip.addEventListener('pointerdown', e => e.stopPropagation());
     }
     tooltip.addEventListener('click', e => e.stopPropagation());
+    applyCardCustomStyles(tooltip, 'left');
     bindStepCardNavigation(tooltip, stepIndex, totalSteps, isPreview);
     anchor.appendChild(tooltip);
     overlay.appendChild(anchor);
@@ -2081,6 +2200,7 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
 
     tooltip.addEventListener('pointerdown', e => e.stopPropagation());
     tooltip.addEventListener('click', e => e.stopPropagation());
+    applyCardCustomStyles(tooltip, 'left');
     bindStepCardNavigation(tooltip, stepIndex, totalSteps, isPreview);
     anchor.appendChild(tooltip);
   }
@@ -3668,6 +3788,73 @@ function bindEvents() {
       state.traceDragStart = null;
       scheduleAutoSave();
     }
+  });
+
+  // Stage Quick Action Bar buttons
+  document.querySelectorAll('#stage-edit-toolbar [data-stage-add]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const kind = btn.dataset.stageAdd;
+      if (kind === 'intro') addStepAtCurrentTime(50, 50, 'screen', { isIntro: true });
+      else if (kind === 'screen') addStepAtCurrentTime(50, 50, 'screen');
+      else if (kind === 'explainer') addStepAtCurrentTime(50, 50, 'explainer', { isExplainer: true });
+      else addStepAtCurrentTime(50, 50, 'hotspot');
+    });
+  });
+  document.getElementById('btn-stage-wf-assets')?.addEventListener('click', () => openWebflowAssetsModal('append'));
+
+  // Visual Hotspot Style Cards
+  document.querySelectorAll('#step-style-cards .style-card-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const step = getSelectedStep();
+      if (!step) return;
+      pushUndoSnapshot();
+      step.style = btn.dataset.style || 'beacon';
+      renderInspectorPanel();
+      renderHotspotOverlay();
+      scheduleAutoSave();
+      refreshIcons();
+    });
+  });
+
+  // Text Alignment Switcher
+  document.querySelectorAll('#step-align-switcher .type-pill-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const step = getSelectedStep();
+      if (!step) return;
+      step.textAlign = btn.dataset.align || 'left';
+      renderInspectorPanel();
+      renderHotspotOverlay();
+      scheduleAutoSave();
+    });
+  });
+
+  // Card Colors & Border Radius
+  document.getElementById('step-bg-color')?.addEventListener('input', e => {
+    const step = getSelectedStep();
+    if (!step) return;
+    step.cardBgColor = e.target.value;
+    const hexEl = document.getElementById('step-bg-color-hex');
+    if (hexEl) hexEl.textContent = e.target.value.toUpperCase();
+    renderHotspotOverlay();
+    scheduleAutoSave();
+  });
+
+  document.getElementById('step-text-color')?.addEventListener('input', e => {
+    const step = getSelectedStep();
+    if (!step) return;
+    step.cardTextColor = e.target.value;
+    const hexEl = document.getElementById('step-text-color-hex');
+    if (hexEl) hexEl.textContent = e.target.value.toUpperCase();
+    renderHotspotOverlay();
+    scheduleAutoSave();
+  });
+
+  document.getElementById('step-radius-select')?.addEventListener('change', e => {
+    const step = getSelectedStep();
+    if (!step) return;
+    step.cardRadius = e.target.value;
+    renderHotspotOverlay();
+    scheduleAutoSave();
   });
 
   // Add Step Dropdown Menu & Undo Button
