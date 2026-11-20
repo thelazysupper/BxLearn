@@ -1912,12 +1912,11 @@ function getStepZoomTransform(step) {
 
 function applyStageZoomForStep(step) {
   const { z, zx, zy } = getStepZoomTransform(step);
-  ['demo-video', 'sample-video-canvas', 'demo-step-image'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.style.transformOrigin = `${zx}% ${zy}%`;
-    el.style.transform = z > 1 ? `scale(${z})` : 'scale(1)';
-  });
+  const viewport = document.getElementById('video-viewport');
+  if (viewport) {
+    viewport.style.transformOrigin = `${zx}% ${zy}%`;
+    viewport.style.transform = z > 1 ? `scale(${z})` : 'scale(1)';
+  }
 }
 
 let overlayRenderSeq = 0;
@@ -2000,6 +1999,9 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     const align = step.textAlign || defaultAlign;
     el.style.textAlign = align;
     el.style.alignItems = align === 'center' ? 'center' : (align === 'right' ? 'flex-end' : 'flex-start');
+    if (z > 1 && el.classList.contains('hotspot-tooltip')) {
+      el.style.zoom = String(1 / z);
+    }
     if (customBg) {
       el.style.background = customBg;
       if (customBg.toLowerCase() !== '#ffffff' && customBg.toLowerCase() !== '#fff') {
@@ -2068,13 +2070,11 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
 
   // CASE 1B: EXPLAINER TOOLTIP (Floating tooltip card, not a page, not a numbered step)
   if (stepType === 'explainer') {
-    const adjX = zx + (Number(step.x ?? 50) - zx) * z;
-    const adjY = zy + (Number(step.y ?? 50) - zy) * z;
     const anchor = document.createElement('div');
     anchor.className = 'hotspot-anchor';
     anchor.id = 'active-hotspot-anchor';
-    anchor.style.left = `${adjX}%`;
-    anchor.style.top = `${adjY}%`;
+    anchor.style.left = `${step.x}%`;
+    anchor.style.top = `${step.y}%`;
 
     const tooltip = document.createElement('div');
     tooltip.id = 'active-hotspot-tooltip';
@@ -2128,13 +2128,11 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
   const anchor = document.createElement('div');
   anchor.className = `hotspot-anchor ${isTrace ? 'is-trace-anchor' : ''}`;
   anchor.id = 'active-hotspot-anchor';
-  const adjX = zx + (Number(step.x ?? 50) - zx) * z;
-  const adjY = zy + (Number(step.y ?? 50) - zy) * z;
-  anchor.style.left = `${adjX}%`;
-  anchor.style.top = `${adjY}%`;
+  anchor.style.left = `${step.x}%`;
+  anchor.style.top = `${step.y}%`;
   if (isTrace) {
-    anchor.style.width = `${Number(step.w || 16) * z}%`;
-    anchor.style.height = `${Number(step.h || 8) * z}%`;
+    anchor.style.width = `${step.w}%`;
+    anchor.style.height = `${step.h}%`;
   }
 
   if (isTrace) {
@@ -2679,9 +2677,9 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       #${widgetId} .bx-stage.is-split { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-rows:minmax(0,1fr); align-items:stretch; }
       #${widgetId} .bx-media-pane { width:100%; height:100%; min-width:0; min-height:0; display:flex; align-items:center; justify-content:center; position:relative; }
       #${widgetId} .bx-stage.is-split .bx-media-pane { border-right:1px solid rgba(255,255,255,0.1); }
-      #${widgetId} .bx-screen-inner { position:relative; width:100%; height:100%; border-radius:12px; box-shadow:0 16px 40px rgba(0,10,22,0.42), 0 0 0 1px rgba(255,255,255,0.14); overflow:visible; }
+      #${widgetId} .bx-screen-inner { position:relative; width:100%; height:100%; border-radius:12px; box-shadow:0 16px 40px rgba(0,10,22,0.42), 0 0 0 1px rgba(255,255,255,0.14); overflow:visible; transition:transform 0.55s cubic-bezier(0.22,1,0.36,1); will-change:transform; }
       #${widgetId} .bx-media-clip { position:absolute; inset:0; border-radius:inherit; overflow:hidden; background:#00101F; }
-      #${widgetId} video, #${widgetId} .bx-img { width:100%; height:100%; display:block; object-fit:fill; transition:transform 0.55s cubic-bezier(0.22,1,0.36,1); will-change:transform; }
+      #${widgetId} video, #${widgetId} .bx-img { width:100%; height:100%; display:block; object-fit:fill; }
       #${widgetId} .bx-overlay { position:absolute; inset:0; pointer-events:none; }
       #${widgetId} .bx-screen-overlay { position:absolute; inset:0; pointer-events:none; z-index:18; }
       #${widgetId} .bx-stage.is-split .bx-screen-overlay { position:relative; inset:auto; width:100%; height:100%; min-width:0; min-height:0; }
@@ -2820,11 +2818,8 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       const z = (isScreen && s.screenLayout !== "image") ? 1 : Math.max(1, Math.min(3, Number(s.zoom || 1)));
       const zx = Math.max(0, Math.min(100, Number(s.x ?? 50)));
       const zy = Math.max(0, Math.min(100, Number(s.y ?? 50)));
-      [video, img].forEach(m => {
-        if (!m) return;
-        m.style.transformOrigin = zx + "% " + zy + "%";
-        m.style.transform = z > 1 ? ("scale(" + z + ")") : "scale(1)";
-      });
+      inner.style.transformOrigin = zx + "% " + zy + "%";
+      inner.style.transform = z > 1 ? ("scale(" + z + ")") : "scale(1)";
       if (isScreen) {
         if (s.screenLayout === "image") {
           img.style.cursor = "pointer";
@@ -2840,14 +2835,13 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       }
       const anchor = document.createElement("div");
       anchor.className = "bx-anchor";
-      const adjX = zx + (Number(s.x ?? 50) - zx) * z;
-      const adjY = zy + (Number(s.y ?? 50) - zy) * z;
-      anchor.style.left = adjX + "%"; anchor.style.top = adjY + "%";
+      anchor.style.left = s.x + "%"; anchor.style.top = s.y + "%";
       if (isExplainer) {
         const tip = document.createElement("div");
         tip.className = "bx-tip";
         tip.style.transform = "translate(-50%, -50%)";
         tip.style.pointerEvents = "auto";
+        if (z > 1) tip.style.zoom = String(1 / z);
         tip.innerHTML = \`\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${tipFooterHtml}\`;
         bindBtns(tip);
         anchor.appendChild(tip);
@@ -2855,8 +2849,8 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
         return;
       }
       if (s.style === "trace") {
-        anchor.style.width = ((s.w || 16) * z) + "%";
-        anchor.style.height = ((s.h || 8) * z) + "%";
+        anchor.style.width = (s.w || 16) + "%";
+        anchor.style.height = (s.h || 8) + "%";
         anchor.style.transform = "translate(-50%,-50%)";
         const tr = document.createElement("div");
         tr.className = "bx-trace";
@@ -2874,6 +2868,7 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
         const tip = document.createElement("div");
         tip.className = "bx-tip";
         tip.style.pointerEvents = "auto";
+        if (z > 1) tip.style.zoom = String(1 / z);
         if (s.x > 62) { tip.style.right = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
         else { tip.style.left = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
         tip.innerHTML = \`\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${tipFooterHtml}\`;

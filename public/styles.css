@@ -3815,10 +3815,13 @@ svg.lucide {
   font-size: 11.5px;
 }
 
-/* Zoom & Pan Smooth Stage Transition */
-.viewport-media-clip video,
-.viewport-media-clip canvas,
-.viewport-media-clip .demo-step-image {
+/* Zoom & Pan Smooth Stage Transition (scales the entire .video-viewport container) */
+.stage-backdrop-frame,
+.stage-media-pane {
+  overflow: hidden;
+}
+
+.video-viewport {
   transition: transform 0.55s var(--ease-out);
   will-change: transform;
 }
