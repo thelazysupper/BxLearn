@@ -3979,3 +3979,21 @@ svg.lucide {
 .flow-node-thumb-wrap {
   cursor: pointer;
 }
+
+/* Ensure right inspector sidebar & form scroll properly inside CSS Grid */
+.editor-layout,
+.flow-canvas-workspace,
+.steps-sidebar,
+.inspector-sidebar {
+  min-height: 0;
+}
+
+.inspector-form {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.inspector-section {
+  flex-shrink: 0;
+}
