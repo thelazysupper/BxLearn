@@ -1825,7 +1825,7 @@ svg.lucide {
 .text-screen-body {
   font-family: var(--font-body);
   font-weight: 400;
-  font-size: 14px;
+  font-size: 15.5px;
   color: var(--body-color);
   margin-bottom: 0;
   max-width: 38ch;
@@ -3882,4 +3882,28 @@ svg.lucide {
 .hotspot-tooltip.has-custom-bg .tooltip-step-counter {
   color: inherit;
   opacity: 0.85;
+}
+
+/* Larger Explainer Description & Draggable Split Media Container */
+.hotspot-tooltip.is-explainer-tooltip .tooltip-body {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.stage-backdrop-frame.is-split-layout .stage-media-pane {
+  overflow: hidden;
+  padding: 16px;
+}
+
+.stage-backdrop-frame.is-split-layout .video-viewport {
+  cursor: grab;
+  transition: none;
+}
+
+.stage-backdrop-frame.is-split-layout .video-viewport.is-dragging-split {
+  cursor: grabbing;
+}
+
+.editor-layout.preview-mode .stage-backdrop-frame.is-split-layout .video-viewport {
+  cursor: default;
 }

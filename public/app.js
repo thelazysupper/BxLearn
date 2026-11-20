@@ -1882,8 +1882,15 @@ function applyStageZoomForStep(step) {
   const { z, zx, zy } = getStepZoomTransform(step);
   const viewport = document.getElementById('video-viewport');
   if (viewport) {
-    viewport.style.transformOrigin = `${zx}% ${zy}%`;
-    viewport.style.transform = z > 1 ? `scale(${z})` : 'scale(1)';
+    if (isStepSplitLayout(step)) {
+      const ox = Number(step.splitOffsetX || 0);
+      const oy = Number(step.splitOffsetY || 0);
+      viewport.style.transformOrigin = '50% 50%';
+      viewport.style.transform = `translate(${ox}%, ${oy}%)`;
+    } else {
+      viewport.style.transformOrigin = `${zx}% ${zy}%`;
+      viewport.style.transform = z > 1 ? `scale(${z})` : 'scale(1)';
+    }
   }
 }
 
@@ -2794,9 +2801,13 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
           img.onclick = next;
           return;
         }
+        if (isSplit) {
+          inner.style.transformOrigin = "50% 50%";
+          inner.style.transform = "translate(" + Number(s.splitOffsetX || 0) + "%," + Number(s.splitOffsetY || 0) + "%)";
+        }
         const scr = document.createElement("div");
         scr.className = "bx-screen";
-        scr.innerHTML = \`<div class="bx-screen-card">\${showKicker && s.kicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;background:rgba(0,118,221,0.1);padding:4px 12px;border-radius:99px;display:inline-block;margin-bottom:2px;">\${s.kicker}</div>\` : ''}\${showTitle ? \`<h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;line-height:1.25;margin:0;">\${s.title}</h3>\` : ''}\${showBody ? \`<p style="font-size:14px;color:#324158;margin:0;max-width:38ch;line-height:1.55;">\${s.body}</p>\` : ''}\${actionsHtml}</div>\`;
+        scr.innerHTML = \`<div class="bx-screen-card">\${showKicker && s.kicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;background:rgba(0,118,221,0.1);padding:4px 12px;border-radius:99px;display:inline-block;margin-bottom:2px;">\${s.kicker}</div>\` : ''}\${showTitle ? \`<h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;line-height:1.25;margin:0;">\${s.title}</h3>\` : ''}\${showBody ? \`<p style="font-size:15.5px;color:#324158;margin:0;max-width:38ch;line-height:1.55;">\${s.body}</p>\` : ''}\${actionsHtml}</div>\`;
         bindBtns(scr);
         screenOverlay.appendChild(scr);
         return;
@@ -2810,7 +2821,7 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
         tip.style.transform = "translate(-50%, -50%)";
         tip.style.pointerEvents = "auto";
         if (z > 1) tip.style.zoom = String(1 / z);
-        tip.innerHTML = \`\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${tipFooterHtml}\`;
+        tip.innerHTML = \`\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p style="font-size:14px;line-height:1.5;">\${s.body}</p>\` : ''}\${tipFooterHtml}\`;
         bindBtns(tip);
         anchor.appendChild(tip);
         overlay.appendChild(anchor);
@@ -3799,12 +3810,48 @@ function bindEvents() {
     updateHotspotFromPointer(e, true);
   });
 
+  const viewportEl = document.getElementById('video-viewport');
+  let splitDragStart = null;
+  if (viewportEl) {
+    viewportEl.addEventListener('pointerdown', e => {
+      if (state.editorMode !== 'edit') return;
+      const step = getSelectedStep();
+      if (!isStepSplitLayout(step)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      viewportEl.classList.add('is-dragging-split');
+      splitDragStart = {
+        clientX: e.clientX,
+        clientY: e.clientY,
+        startX: Number(step.splitOffsetX || 0),
+        startY: Number(step.splitOffsetY || 0),
+        w: Math.max(100, viewportEl.clientWidth),
+        h: Math.max(100, viewportEl.clientHeight)
+      };
+    });
+  }
+
   window.addEventListener('pointermove', e => {
+    if (splitDragStart && state.editorMode === 'edit') {
+      const step = getSelectedStep();
+      if (!isStepSplitLayout(step)) return;
+      const dxPct = ((e.clientX - splitDragStart.clientX) / splitDragStart.w) * 100;
+      const dyPct = ((e.clientY - splitDragStart.clientY) / splitDragStart.h) * 100;
+      step.splitOffsetX = Math.max(-45, Math.min(45, Math.round((splitDragStart.startX + dxPct) * 10) / 10));
+      step.splitOffsetY = Math.max(-45, Math.min(45, Math.round((splitDragStart.startY + dyPct) * 10) / 10));
+      applyStageZoomForStep(step);
+      return;
+    }
     if (!state.isDraggingHotspot || state.editorMode !== 'edit') return;
     updateHotspotFromPointer(e, false);
   });
 
   window.addEventListener('pointerup', () => {
+    if (splitDragStart) {
+      splitDragStart = null;
+      viewportEl?.classList.remove('is-dragging-split');
+      scheduleAutoSave();
+    }
     if (state.isDraggingHotspot) {
       state.isDraggingHotspot = false;
       state.traceAction = null;
@@ -4906,6 +4953,8 @@ async function encodeSharePayload(demo) {
     if (st.advanceOnHotspotClick === false) s.ah = 0;
     if (st.showTooltip === false) s.stp = 0;
     if (st.zoom && Number(st.zoom) > 1) s.zm = Number(st.zoom);
+    if (st.splitOffsetX) s.sox = Number(st.splitOffsetX);
+    if (st.splitOffsetY) s.soy = Number(st.splitOffsetY);
     if (st.ctaUrl) s.cu = st.ctaUrl;
     if (st.imageUrl) {
       const compactUrl = st.imageUrl.startsWith('https://cdn.prod.website-files.com/')
@@ -5001,6 +5050,8 @@ function expandSharePayload(parsed) {
         advanceOnHotspotClick: s.ah !== 0,
         showTooltip: s.stp !== 0,
         zoom: s.zm ? Number(s.zm) : 1,
+        splitOffsetX: s.sox ? Number(s.sox) : 0,
+        splitOffsetY: s.soy ? Number(s.soy) : 0,
         ctaUrl: s.cu || '',
         imageUrl: s.im !== undefined ? (urls[s.im] || '') : ''
       };
