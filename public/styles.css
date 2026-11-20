@@ -3831,3 +3831,52 @@ svg.lucide {
 .stage-tool-btn.active svg.lucide {
   color: var(--primary);
 }
+
+/* Compact Tooltip Arrow Footer */
+.tooltip-arrow-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 8px;
+  border: none;
+  background: var(--primary);
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.14s var(--ease-out), background 0.14s var(--ease-out), opacity 0.14s;
+}
+
+.tooltip-arrow-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.tooltip-arrow-btn.is-ghost {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--heading-color);
+}
+
+.tooltip-arrow-btn.is-ghost:hover {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+.tooltip-arrow-btn svg.lucide {
+  width: 15px;
+  height: 15px;
+}
+
+.hotspot-tooltip.has-custom-bg .tooltip-arrow-btn {
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit;
+}
+
+.hotspot-tooltip.has-custom-bg .tooltip-arrow-btn:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.hotspot-tooltip.has-custom-bg .tooltip-step-counter {
+  color: inherit;
+  opacity: 0.85;
+}

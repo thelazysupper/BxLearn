@@ -2000,7 +2000,12 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     const align = step.textAlign || defaultAlign;
     el.style.textAlign = align;
     el.style.alignItems = align === 'center' ? 'center' : (align === 'right' ? 'flex-end' : 'flex-start');
-    if (customBg) el.style.background = customBg;
+    if (customBg) {
+      el.style.background = customBg;
+      if (customBg.toLowerCase() !== '#ffffff' && customBg.toLowerCase() !== '#fff') {
+        el.classList.add('has-custom-bg');
+      }
+    }
     if (customText) {
       el.style.color = customText;
       el.querySelectorAll('.text-screen-title, .text-screen-body, .tooltip-title, .tooltip-body').forEach(t => {
@@ -2075,19 +2080,15 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     tooltip.id = 'active-hotspot-tooltip';
     tooltip.className = `hotspot-tooltip is-explainer-tooltip ${isPreview ? 'is-preview' : ''}`;
     tooltip.innerHTML = `
-      ${showKicker ? `
-        <div class="tooltip-step-top">
-          <span class="tooltip-step-counter" id="active-stage-kicker">${escapeHtml(step.kicker || 'Explainer')}</span>
-        </div>
-      ` : ''}
       ${showTitle ? `<h3 class="tooltip-title" id="active-stage-title">${escapeHtml(step.title || 'Explainer')}</h3>` : ''}
       ${showBody ? `<p class="tooltip-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>` : ''}
-      ${showAnyAction ? `
+      ${(showKicker || showAnyAction) ? `
         <div class="tooltip-footer">
-          ${showBackBtn && stepIndex > 0 ? `<button type="button" class="btn btn-xs btn-ghost" data-step-nav="prev">Back</button>` : `<span></span>`}
-          <div style="display:flex; gap:6px;">
-            ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline">Open Link</a>` : ''}
-            ${showPrimaryBtn ? `<button type="button" class="btn btn-xs btn-primary" data-step-nav="next"><span id="active-stage-btn-text">${escapeHtml(btnText)}</span></button>` : ''}
+          ${showKicker ? `<span class="tooltip-step-counter" id="active-stage-kicker">${escapeHtml(step.kicker || 'Explainer')}</span>` : `<span></span>`}
+          <div style="display:flex; align-items:center; gap:6px;">
+            ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline">Open</a>` : ''}
+            ${showBackBtn && stepIndex > 0 ? `<button type="button" class="tooltip-arrow-btn is-ghost" data-step-nav="prev" title="Back"><i data-lucide="arrow-left"></i></button>` : ''}
+            ${showPrimaryBtn ? `<button type="button" class="tooltip-arrow-btn" data-step-nav="next" title="${escapeHtml(btnText)}"><i data-lucide="arrow-right"></i></button>` : ''}
           </div>
         </div>
       ` : ''}
@@ -2223,19 +2224,15 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     tooltip.id = 'active-hotspot-tooltip';
     tooltip.className = `hotspot-tooltip ${resolvePlacementClass(step)}`;
     tooltip.innerHTML = `
-      ${showKicker ? `
-        <div class="tooltip-step-top">
-          <span class="tooltip-step-counter">Step ${pos.number} of ${pos.total}</span>
-        </div>
-      ` : ''}
       ${showTitle ? `<h3 class="tooltip-title" id="active-stage-title">${escapeHtml(step.title || `Step ${pos.number}`)}</h3>` : ''}
       ${showBody ? `<p class="tooltip-body" id="active-stage-body">${escapeHtml(step.body || '')}</p>` : ''}
-      ${showAnyAction ? `
+      ${(showKicker || showAnyAction) ? `
         <div class="tooltip-footer">
-          ${showBackBtn && stepIndex > 0 ? `<button type="button" class="btn btn-xs btn-ghost" data-step-nav="prev">Back</button>` : `<span></span>`}
-          <div style="display:flex; gap:6px;">
-            ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline">Open Link</a>` : ''}
-            ${showPrimaryBtn ? `<button type="button" class="btn btn-xs btn-primary" data-step-nav="next"><span id="active-stage-btn-text">${escapeHtml(btnText)}</span></button>` : ''}
+          ${showKicker ? `<span class="tooltip-step-counter">${pos.number} of ${pos.total}</span>` : `<span></span>`}
+          <div style="display:flex; align-items:center; gap:6px;">
+            ${step.ctaUrl ? `<a href="${escapeHtml(step.ctaUrl)}" target="_blank" rel="noopener" class="btn btn-xs btn-outline">Open</a>` : ''}
+            ${showBackBtn && stepIndex > 0 ? `<button type="button" class="tooltip-arrow-btn is-ghost" data-step-nav="prev" title="Back"><i data-lucide="arrow-left"></i></button>` : ''}
+            ${showPrimaryBtn ? `<button type="button" class="tooltip-arrow-btn" data-step-nav="next" title="${escapeHtml(btnText)}"><i data-lucide="arrow-right"></i></button>` : ''}
           </div>
         </div>
       ` : ''}
@@ -2807,6 +2804,7 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
     const showBackBtn = s.showBackBtn !== undefined ? Boolean(s.showBackBtn) : s.showButtons !== false;
     const showAnyAction = (showBackBtn && stepIdx > 0) || showPrimaryBtn;
     const actionsHtml = showAnyAction ? \`<div style="display:flex;align-items:center;gap:8px;margin-top:8px;\${isScreen && !isSplit ? 'justify-content:center;' : 'justify-content:flex-start;'}">\${showBackBtn && stepIdx > 0 ? \`<button data-bx-prev style="background:transparent;color:#324158;border:none;padding:8px 12px;font-family:'Host Grotesk',sans-serif;font-weight:500;font-size:13px;cursor:pointer;">Back</button>\` : ''}\${showPrimaryBtn ? \`<button class="bx-btn" data-bx-next>\${s.buttonText || (isScreen || isExplainer ? 'Continue' : 'Next')}</button>\` : ''}</div>\` : '';
+    const tipFooterHtml = (showKicker || showAnyAction) ? \`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;">\${showKicker ? \`<span style="font-size:11.5px;font-weight:600;color:#0076DD;">\${isExplainer ? (s.kicker || 'Explainer') : ((stepNumbers[stepIdx] || (stepIdx+1)) + ' of ' + stepNumCounter)}</span>\` : '<span></span>'}<div style="display:flex;align-items:center;gap:6px;">\${showBackBtn && stepIdx > 0 ? \`<button data-bx-prev title="Back" style="width:28px;height:28px;border-radius:8px;border:none;background:rgba(15,23,42,0.08);color:#00182C;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">←</button>\` : ''}\${showPrimaryBtn ? \`<button data-bx-next title="Next" style="width:28px;height:28px;border-radius:8px;border:none;background:#0076DD;color:#FFF;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">→</button>\` : ''}</div></div>\` : '';
     stage.classList.toggle("is-split", isSplit);
 
     function bindBtns(el) {
@@ -2850,7 +2848,7 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
         tip.className = "bx-tip";
         tip.style.transform = "translate(-50%, -50%)";
         tip.style.pointerEvents = "auto";
-        tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">\${s.kicker || 'Explainer'}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${actionsHtml}\`;
+        tip.innerHTML = \`\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${tipFooterHtml}\`;
         bindBtns(tip);
         anchor.appendChild(tip);
         overlay.appendChild(anchor);
@@ -2878,7 +2876,7 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
         tip.style.pointerEvents = "auto";
         if (s.x > 62) { tip.style.right = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
         else { tip.style.left = s.style === "trace" ? "calc(100% + 14px)" : "24px"; tip.style.top = "50%"; tip.style.transform = "translateY(-50%)"; }
-        tip.innerHTML = \`\${showKicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;margin-bottom:4px;">Step \${stepNumbers[stepIdx] || (stepIdx+1)}</div>\` : ''}\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${actionsHtml}\`;
+        tip.innerHTML = \`\${showTitle ? \`<h4>\${s.title}</h4>\` : ''}\${showBody ? \`<p>\${s.body}</p>\` : ''}\${tipFooterHtml}\`;
         bindBtns(tip);
         anchor.appendChild(tip);
       }
