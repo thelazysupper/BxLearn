@@ -408,130 +408,34 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
         </div>
 
         <div id="inspector-form" class="inspector-form">
+          <!-- 1. TYPE AND MEDIA -->
           <details class="inspector-section" open>
             <summary class="inspector-section-title">
-              <span>Type &amp; Media</span>
+              <span>TYPE AND MEDIA</span>
               <i data-lucide="chevron-down"></i>
             </summary>
             <div class="inspector-section-body">
-              <!-- Step Type Switcher: Hotspot vs Text Screen vs Explainer Tooltip -->
               <div class="form-group">
-                <label>Step Type</label>
                 <div class="type-pill-group type-pill-group-3" id="step-type-switcher">
                   <button type="button" class="type-pill-btn active" data-step-type="hotspot">
                     <i data-lucide="mouse-pointer-click"></i>
-                    <span>Hotspot</span>
+                    <span>Interact</span>
                   </button>
                   <button type="button" class="type-pill-btn" data-step-type="screen">
-                    <i data-lucide="layout-template"></i>
-                    <span>Text Page</span>
+                    <i data-lucide="monitor"></i>
+                    <span>Present</span>
                   </button>
                   <button type="button" class="type-pill-btn" data-step-type="explainer">
-                    <i data-lucide="book-open"></i>
-                    <span>Explainer</span>
+                    <i data-lucide="lightbulb"></i>
+                    <span>Explain</span>
                   </button>
                 </div>
               </div>
 
-              <!-- Step Screenshot / Frame Control -->
-              <div class="form-group">
-                <label>Step Screenshot</label>
-                <div class="screenshot-inspector-box">
-                  <div class="screenshot-inspector-actions">
-                    <label for="step-screenshot-input" class="btn btn-xs btn-outline" title="Upload image for this step">
-                      <i data-lucide="image"></i>
-                      <span id="step-screenshot-btn-label">Upload Screenshot</span>
-                    </label>
-                    <input id="step-screenshot-input" type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" />
-                    <button type="button" id="btn-inspector-wf-assets" class="icon-btn" title="Pick from Webflow Assets">
-                      <i data-lucide="folder-search"></i>
-                    </button>
-                    <button type="button" id="btn-snap-video-frame" class="icon-btn" title="Snap current video frame as screenshot">
-                      <i data-lucide="camera"></i>
-                    </button>
-                    <button type="button" id="btn-clear-step-screenshot" class="icon-btn text-danger hidden" title="Remove screenshot (use video timeline)">
-                      <i data-lucide="x"></i>
-                    </button>
-                  </div>
-                  <span id="step-screenshot-status" class="screenshot-status-hint">Or press ⌘V to paste screenshot</span>
-                </div>
-              </div>
-            </div>
-          </details>
-
-          <details class="inspector-section" open>
-            <summary class="inspector-section-title">
-              <span>Content</span>
-              <i data-lucide="chevron-down"></i>
-            </summary>
-            <div class="inspector-section-body">
-              <div id="screen-kicker-group" class="form-group hidden">
-                <label for="step-kicker-input">Label / Badge</label>
-                <input id="step-kicker-input" type="text" placeholder="e.g. Welcome • Product Tour" />
-              </div>
-
-              <div class="form-group">
-                <label for="step-title-input">Heading</label>
-                <input id="step-title-input" type="text" placeholder="Step heading..." />
-              </div>
-
-              <div class="form-group">
-                <label for="step-body-input">Description</label>
-                <textarea id="step-body-input" rows="3" placeholder="Explain this step..."></textarea>
-              </div>
-
-              <div class="form-row-2">
-                <div id="step-timestamp-group" class="form-group">
-                  <label for="step-timestamp-input">Pause at (s)</label>
-                  <div class="input-with-btn">
-                    <input id="step-timestamp-input" type="number" step="0.1" min="0" />
-                    <button type="button" id="btn-use-curr-time" class="icon-btn" title="Capture current video time">
-                      <i data-lucide="clock"></i>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label for="step-btn-text-input">Button</label>
-                  <input id="step-btn-text-input" type="text" placeholder="Next" />
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="step-cta-url-input">CTA Link (optional)</label>
-                <input id="step-cta-url-input" type="url" placeholder="https://..." />
-              </div>
-
-              <div class="form-group">
-                <label>Text Alignment</label>
-                <div class="type-pill-group type-pill-group-3" id="step-align-switcher">
-                  <button type="button" class="type-pill-btn" data-align="left" title="Align Left">
-                    <i data-lucide="align-left"></i>
-                    <span>Left</span>
-                  </button>
-                  <button type="button" class="type-pill-btn active" data-align="center" title="Align Center">
-                    <i data-lucide="align-center"></i>
-                    <span>Center</span>
-                  </button>
-                  <button type="button" class="type-pill-btn" data-align="right" title="Align Right">
-                    <i data-lucide="align-right"></i>
-                    <span>Right</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </details>
-
-          <details class="inspector-section" open>
-            <summary class="inspector-section-title">
-              <span>Behavior &amp; Appearance</span>
-              <i data-lucide="chevron-down"></i>
-            </summary>
-            <div class="inspector-section-body">
-              <!-- Hotspot-only controls -->
+              <!-- Interact (Hotspot) controls: Style + Position -->
               <div id="hotspot-only-fields" class="form-group" style="gap: 10px;">
                 <div class="form-group">
-                  <label>Hotspot Style</label>
+                  <label>Style</label>
                   <div class="hotspot-style-cards" id="step-style-cards">
                     <button type="button" class="style-card-btn active" data-style="beacon">
                       <i data-lucide="circle-dot"></i>
@@ -554,7 +458,7 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
                 </div>
 
                 <div class="form-group">
-                  <label for="step-placement-select">Tooltip Position</label>
+                  <label for="step-placement-select">Position</label>
                   <select id="step-placement-select">
                     <option value="auto">Auto</option>
                     <option value="right">Right</option>
@@ -565,6 +469,79 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
                 </div>
               </div>
 
+              <!-- Present (Text Screen) controls: Layout + Backdrop -->
+              <div id="screen-only-fields" class="form-group hidden" style="gap: 10px;">
+                <div class="form-group">
+                  <label>Layout</label>
+                  <div class="type-pill-group type-pill-group-3" id="step-screen-layout-switcher">
+                    <button type="button" class="type-pill-btn" data-screen-layout="split">
+                      <i data-lucide="columns-2"></i>
+                      <span>50/50</span>
+                    </button>
+                    <button type="button" class="type-pill-btn active" data-screen-layout="default">
+                      <i data-lucide="align-left"></i>
+                      <span>Text only</span>
+                    </button>
+                    <button type="button" class="type-pill-btn" data-screen-layout="image">
+                      <i data-lucide="image"></i>
+                      <span>Image only</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="step-backdrop-select">Backdrop</label>
+                  <select id="step-backdrop-select">
+                    <option value="blur">Blurred Media</option>
+                    <option value="dark">Dark Navy (#00182C)</option>
+                    <option value="light">Minimal Light</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Image: Asset | Upload -->
+              <div class="form-group">
+                <div class="inspector-label-row">
+                  <label>Image</label>
+                  <div class="inspector-inline-tools">
+                    <button type="button" id="btn-snap-video-frame" class="icon-btn" title="Snap current video frame">
+                      <i data-lucide="camera"></i>
+                    </button>
+                    <button type="button" id="btn-clear-step-screenshot" class="icon-btn text-danger hidden" title="Remove image">
+                      <i data-lucide="x"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="media-dual-btns">
+                  <button type="button" id="btn-inspector-wf-assets" class="btn btn-sm btn-outline media-dual-btn" title="Pick from Webflow Assets">
+                    <i data-lucide="folder-search"></i>
+                    <span>Asset</span>
+                  </button>
+                  <label for="step-screenshot-input" class="btn btn-sm btn-outline media-dual-btn" title="Upload image for this step">
+                    <i data-lucide="upload"></i>
+                    <span id="step-screenshot-btn-label">Upload</span>
+                  </label>
+                  <input id="step-screenshot-input" type="file" accept="image/png,image/jpeg,image/webp,image/*" class="hidden" />
+                </div>
+                <span id="step-screenshot-status" class="screenshot-status-hint">Or press ⌘V to paste</span>
+              </div>
+
+              <div id="trace-only-fields" class="form-group trace-inspector-box hidden">
+                <div class="trace-inspector-hint">
+                  <i data-lucide="scan-line"></i>
+                  <span>Drag the box or corner handles on the stage to resize Area.</span>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <!-- 2. BEHAVIOR & APPEARANCE -->
+          <details class="inspector-section" open>
+            <summary class="inspector-section-title">
+              <span>BEHAVIOR &amp; APPEARANCE</span>
+              <i data-lucide="chevron-down"></i>
+            </summary>
+            <div class="inspector-section-body">
               <div class="form-row-2">
                 <div class="form-group">
                   <label for="step-bg-color">Background</label>
@@ -582,6 +559,51 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
                 </div>
               </div>
 
+              <div id="hotspot-tooltip-toggle" class="form-group">
+                <label>Tooltip</label>
+                <div class="type-pill-group" id="step-tooltip-switcher">
+                  <button type="button" class="type-pill-btn active" data-tooltip-vis="visible">
+                    <i data-lucide="eye"></i>
+                    <span>Visible</span>
+                  </button>
+                  <button type="button" class="type-pill-btn" data-tooltip-vis="hidden">
+                    <i data-lucide="eye-off"></i>
+                    <span>Hidden</span>
+                  </button>
+                </div>
+                <input id="step-show-tooltip" type="checkbox" checked class="hidden" />
+              </div>
+
+              <div id="card-visibility-fields" class="form-group">
+                <label>Elements</label>
+                <div class="visibility-grid visibility-grid-3">
+                  <label class="checkbox-label">
+                    <input id="step-show-title" type="checkbox" checked />
+                    <span>Heading</span>
+                  </label>
+                  <label class="checkbox-label">
+                    <input id="step-show-kicker" type="checkbox" checked />
+                    <span>Eyebrow</span>
+                  </label>
+                  <label class="checkbox-label">
+                    <input id="step-show-primary-btn" type="checkbox" checked />
+                    <span>Button</span>
+                  </label>
+                  <label class="checkbox-label">
+                    <input id="step-show-body" type="checkbox" checked />
+                    <span>Description</span>
+                  </label>
+                  <label class="checkbox-label">
+                    <input id="step-show-back-btn" type="checkbox" checked />
+                    <span>Back</span>
+                  </label>
+                  <label class="checkbox-label" id="step-show-progress-wrap">
+                    <input id="step-show-progress" type="checkbox" checked />
+                    <span>Progress</span>
+                  </label>
+                </div>
+              </div>
+
               <div class="form-group">
                 <label for="step-radius-select">Border Radius</label>
                 <select id="step-radius-select">
@@ -591,84 +613,73 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
                 </select>
               </div>
 
-              <!-- Hotspot tooltip visibility (Beacon / Ring / Trace) -->
-              <div id="hotspot-tooltip-toggle" class="form-group checkbox-group">
-                <label class="checkbox-label">
-                  <input id="step-show-tooltip" type="checkbox" checked />
-                  <span>Show tooltip card</span>
-                </label>
-              </div>
-
-              <!-- Button Trace extra hint -->
-              <div id="trace-only-fields" class="form-group trace-inspector-box hidden">
-                <div class="trace-inspector-hint">
-                  <i data-lucide="scan-line"></i>
-                  <span>Drag the box or its corner handles on the stage to trace any button.</span>
-                </div>
-              </div>
-
-              <!-- Text Screen-only controls -->
-              <div id="screen-only-fields" class="form-group hidden" style="gap: 10px;">
-                <div class="form-group">
-                  <label>Text Screen Layout</label>
-                  <div class="type-pill-group" id="step-screen-layout-switcher">
-                    <button type="button" class="type-pill-btn active" data-screen-layout="default">
-                      <i data-lucide="layout-template"></i>
-                      <span>Default (Full)</span>
-                    </button>
-                    <button type="button" class="type-pill-btn" data-screen-layout="split">
-                      <i data-lucide="columns-2"></i>
-                      <span>50/50 Split</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label for="step-backdrop-select">Screen Backdrop</label>
-                  <select id="step-backdrop-select">
-                    <option value="blur">Blurred Media</option>
-                    <option value="dark">Dark Navy (#00182C)</option>
-                    <option value="light">Minimal Light</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Card Field Visibility Toggles -->
-              <div id="card-visibility-fields" class="form-group">
-                <label>Visible Elements</label>
-                <div class="visibility-grid">
-                  <label class="checkbox-label">
-                    <input id="step-show-kicker" type="checkbox" checked />
-                    <span>Label / Counter</span>
-                  </label>
-                  <label class="checkbox-label">
-                    <input id="step-show-title" type="checkbox" checked />
-                    <span>Heading</span>
-                  </label>
-                  <label class="checkbox-label">
-                    <input id="step-show-body" type="checkbox" checked />
-                    <span>Description</span>
-                  </label>
-                  <label class="checkbox-label">
-                    <input id="step-show-primary-btn" type="checkbox" checked />
-                    <span>Primary button</span>
-                  </label>
-                  <label class="checkbox-label">
-                    <input id="step-show-back-btn" type="checkbox" checked />
-                    <span>Back button</span>
-                  </label>
-                  <label class="checkbox-label" id="step-show-progress-wrap">
-                    <input id="step-show-progress" type="checkbox" checked />
-                    <span>Progress bar</span>
-                  </label>
-                </div>
-              </div>
-
               <div id="hotspot-advance-group" class="form-group checkbox-group">
                 <label class="checkbox-label">
                   <input id="step-advance-hotspot" type="checkbox" checked />
                   <span>Advance when hotspot is clicked</span>
                 </label>
+              </div>
+            </div>
+          </details>
+
+          <!-- 3. CONTENT -->
+          <details class="inspector-section" open>
+            <summary class="inspector-section-title">
+              <span>CONTENT</span>
+              <i data-lucide="chevron-down"></i>
+            </summary>
+            <div class="inspector-section-body">
+              <div id="screen-kicker-group" class="form-group hidden">
+                <label for="step-kicker-input">Eyebrow</label>
+                <input id="step-kicker-input" type="text" placeholder="e.g. Welcome • Product Tour" />
+              </div>
+
+              <div class="form-group">
+                <label for="step-title-input">Heading</label>
+                <input id="step-title-input" type="text" placeholder="This is a text" />
+              </div>
+
+              <div class="form-group">
+                <label for="step-body-input">Description</label>
+                <textarea id="step-body-input" rows="3" placeholder="This is a text"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="step-btn-text-input">Button</label>
+                <input id="step-btn-text-input" type="text" placeholder="Continue" />
+              </div>
+
+              <div id="step-timestamp-group" class="form-group">
+                <label for="step-timestamp-input">Pause at (s)</label>
+                <div class="input-with-btn">
+                  <input id="step-timestamp-input" type="number" step="0.1" min="0" />
+                  <button type="button" id="btn-use-curr-time" class="icon-btn" title="Capture current video time">
+                    <i data-lucide="clock"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="step-cta-url-input">CTA Link (optional)</label>
+                <input id="step-cta-url-input" type="url" placeholder="https://..." />
+              </div>
+
+              <div class="form-group">
+                <label>Alignment</label>
+                <div class="type-pill-group type-pill-group-3" id="step-align-switcher">
+                  <button type="button" class="type-pill-btn" data-align="left" title="Align Left">
+                    <i data-lucide="align-left"></i>
+                    <span>Left</span>
+                  </button>
+                  <button type="button" class="type-pill-btn active" data-align="center" title="Align Center">
+                    <i data-lucide="align-center"></i>
+                    <span>Center</span>
+                  </button>
+                  <button type="button" class="type-pill-btn" data-align="right" title="Align Right">
+                    <i data-lucide="align-right"></i>
+                    <span>Right</span>
+                  </button>
+                </div>
               </div>
             </div>
           </details>

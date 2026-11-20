@@ -1747,7 +1747,7 @@ function renderInspectorPanel() {
   const timestampGroup = document.getElementById('step-timestamp-group');
 
   const isScreen = stepType === 'screen';
-  if (shotBtnLabel) shotBtnLabel.textContent = hasShot ? 'Replace Screenshot' : (isScreen ? 'Add Image (50/50)' : 'Upload Screenshot');
+  if (shotBtnLabel) shotBtnLabel.textContent = hasShot ? 'Replace' : 'Upload';
   if (clearShotBtn) clearShotBtn.classList.toggle('hidden', !hasShot || (!hasVideo && !isScreen));
   if (snapFrameBtn) snapFrameBtn.classList.toggle('hidden', !hasVideo);
   if (shotStatus) {
@@ -1802,8 +1802,12 @@ function renderInspectorPanel() {
   if (txtHex) txtHex.textContent = textColor;
   const radSel = document.getElementById('step-radius-select');
   if (radSel) radSel.value = step.cardRadius || 'round';
+  const showTip = step.showTooltip !== false;
   const showTipEl = document.getElementById('step-show-tooltip');
-  if (showTipEl) showTipEl.checked = step.showTooltip !== false;
+  if (showTipEl) showTipEl.checked = showTip;
+  document.querySelectorAll('#step-tooltip-switcher .type-pill-btn').forEach(btn => {
+    btn.classList.toggle('active', (btn.dataset.tooltipVis === 'visible') === showTip);
+  });
   const showKickerEl = document.getElementById('step-show-kicker');
   if (showKickerEl) showKickerEl.checked = step.showKicker !== false;
   const showTitleEl = document.getElementById('step-show-title');
@@ -1816,7 +1820,7 @@ function renderInspectorPanel() {
   if (showBackBtnEl) showBackBtnEl.checked = step.showBackBtn !== undefined ? Boolean(step.showBackBtn) : step.showButtons !== false;
   const showProgressEl = document.getElementById('step-show-progress');
   if (showProgressEl) showProgressEl.checked = step.showProgress !== undefined ? Boolean(step.showProgress) : !isExplainerType;
-  const screenLayout = step.screenLayout === 'split' ? 'split' : 'default';
+  const screenLayout = ['split', 'image'].includes(step.screenLayout) ? step.screenLayout : 'default';
   document.querySelectorAll('#step-screen-layout-switcher .type-pill-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.screenLayout === screenLayout);
   });
@@ -1978,8 +1982,18 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
     }
   };
 
-  // CASE 1: INTRO / CHAPTER / OUTRO TEXT PAGE (Default Full-Stage OR 50/50 Split)
+  // CASE 1: INTRO / CHAPTER / OUTRO TEXT PAGE (Default Full-Stage, 50/50 Split, or Image Only)
   if (stepType === 'screen') {
+    if (step.screenLayout === 'image') {
+      if (isPreview) {
+        const imgEl = document.getElementById('demo-step-image');
+        if (imgEl) {
+          imgEl.style.cursor = 'pointer';
+          imgEl.onclick = () => advancePreviewStep();
+        }
+      }
+      return;
+    }
     const screenOverlay = document.getElementById('stage-screen-overlay') || overlay;
     screenOverlay.classList.remove('hidden');
     const backdropMode = step.backdrop || 'blur';
@@ -3921,17 +3935,33 @@ function bindEvents() {
     });
   });
 
-  // Text Screen Layout Switcher (Default Full vs 50/50 Split)
+  // Text Screen Layout Switcher (50/50 vs Text only vs Image only)
   document.querySelectorAll('#step-screen-layout-switcher .type-pill-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const step = getSelectedStep();
       if (!step) return;
       pushUndoSnapshot();
-      step.screenLayout = btn.dataset.screenLayout === 'split' ? 'split' : 'default';
+      const layout = btn.dataset.screenLayout;
+      step.screenLayout = ['split', 'image'].includes(layout) ? layout : 'default';
       renderInspectorPanel();
       renderHotspotOverlay();
       scheduleAutoSave();
       refreshIcons();
+    });
+  });
+
+  // Tooltip Visible / Hidden Switcher
+  document.querySelectorAll('#step-tooltip-switcher .type-pill-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const step = getSelectedStep();
+      if (!step) return;
+      const isVis = btn.dataset.tooltipVis === 'visible';
+      step.showTooltip = isVis;
+      const cb = document.getElementById('step-show-tooltip');
+      if (cb) cb.checked = isVis;
+      renderInspectorPanel();
+      renderHotspotOverlay();
+      scheduleAutoSave();
     });
   });
 

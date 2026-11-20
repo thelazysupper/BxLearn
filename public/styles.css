@@ -3780,3 +3780,37 @@ svg.lucide {
 .step-thumb-card {
   border-color: #E8EDF3;
 }
+
+/* Inspector Redesign Additions */
+.inspector-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inspector-inline-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.media-dual-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.media-dual-btn {
+  justify-content: center;
+  width: 100%;
+  background: #FFFFFF;
+}
+
+.visibility-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 6px;
+}
+
+.visibility-grid-3 .checkbox-label span {
+  font-size: 11.5px;
+}
