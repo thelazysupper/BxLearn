@@ -1584,34 +1584,29 @@ function renderEditorStepsList() {
     const isScreen = getStepType(step) === 'screen';
     const pos = getNumberedStepPosition(state.activeDemo.steps, idx);
     const hasShot = Boolean(step.imageUrl);
-    const titleText = step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`);
-
+    const metaLabel = pos.isExplainer
+      ? (hasShot || !hasVideo ? 'Explainer' : `Explainer • ${formatSeconds(step.timestamp)}`)
+      : (hasShot ? 'Screenshot' : (hasVideo ? formatSeconds(step.timestamp) : `Step ${pos.number}`));
     const card = document.createElement('div');
-    card.className = `step-thumb-card ${step.id === state.selectedStepId ? 'active' : ''}`;
+    card.className = `step-card ${step.id === state.selectedStepId ? 'active' : ''}`;
     card.draggable = true;
     card.dataset.stepId = step.id;
     card.innerHTML = `
-      <div class="step-thumb-media">
-        ${hasShot
-          ? `<img src="${escapeHtml(step.imageUrl)}" alt="" loading="lazy" />`
-          : `<div class="step-thumb-screen-mock">${escapeHtml(isScreen ? (step.kicker || titleText) : (hasVideo ? formatSeconds(step.timestamp) : titleText))}</div>`}
-        <div class="step-thumb-badge ${pos.isExplainer ? 'is-explainer' : ''}" title="${pos.isExplainer ? 'Explainer (not a step)' : (isScreen ? 'Text Page' : 'Hotspot Step')}">
-          ${pos.isExplainer ? '<i data-lucide="book-open"></i>' : (isScreen ? '<i data-lucide="layout-template"></i>' : pos.number)}
-        </div>
-        <div class="step-thumb-actions">
-          <button type="button" class="step-thumb-act-btn step-dup-btn" data-dup-step="${step.id}" title="Duplicate">
-            <i data-lucide="copy"></i>
-          </button>
-          <button type="button" class="step-thumb-act-btn step-del-btn" data-del-step="${step.id}" title="Delete">
-            <i data-lucide="trash-2"></i>
-          </button>
-        </div>
+      <span class="step-drag-handle" title="Drag to reorder">
+        <i data-lucide="grip-vertical"></i>
+      </span>
+      <div class="step-num-circle ${pos.isExplainer ? 'is-explainer' : ''}" title="${pos.isExplainer ? 'Explainer (not a step)' : (isScreen ? 'Intro / Text Screen' : (hasShot ? 'Screenshot Step' : 'Hotspot Step'))}">
+        ${pos.isExplainer ? '<i data-lucide="book-open"></i>' : (isScreen ? '<i data-lucide="layout-template"></i>' : pos.number)}
       </div>
-      <div class="step-thumb-footer">
-        <div class="step-thumb-title">${escapeHtml(titleText)}</div>
+      ${hasShot ? `<img src="${escapeHtml(step.imageUrl)}" alt="" class="step-card-thumb" loading="lazy" />` : ''}
+      <div class="step-card-info">
+        <div class="step-card-title">${escapeHtml(step.title || (pos.isExplainer ? 'Explainer' : `Step ${pos.number}`))}</div>
+        <span class="step-time-pill">${escapeHtml(metaLabel)}</span>
       </div>
+      <button type="button" class="icon-btn step-dup-btn" data-dup-step="${step.id}" title="Duplicate">
+        <i data-lucide="copy"></i>
+      </button>
     `;
-
     card.addEventListener('dragstart', e => {
       draggedStepId = step.id;
       card.classList.add('is-dragging');
@@ -1626,7 +1621,7 @@ function renderEditorStepsList() {
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
       const rect = card.getBoundingClientRect();
       const isTop = (e.clientY - rect.top) < rect.height / 2;
-      listEl.querySelectorAll('.step-thumb-card').forEach(c => {
+      listEl.querySelectorAll('.step-card').forEach(c => {
         if (c !== card) c.classList.remove('drag-over-top', 'drag-over-bottom');
       });
       card.classList.toggle('drag-over-top', isTop);
@@ -1652,11 +1647,10 @@ function renderEditorStepsList() {
     });
     card.addEventListener('dragend', () => {
       draggedStepId = null;
-      listEl.querySelectorAll('.step-thumb-card').forEach(c => {
+      listEl.querySelectorAll('.step-card').forEach(c => {
         c.classList.remove('is-dragging', 'drag-over-top', 'drag-over-bottom');
       });
     });
-
     const dupBtn = card.querySelector('.step-dup-btn');
     if (dupBtn) {
       dupBtn.addEventListener('click', e => {
@@ -1664,25 +1658,6 @@ function renderEditorStepsList() {
         duplicateStep(step.id);
       });
     }
-    const delBtn = card.querySelector('.step-del-btn');
-    if (delBtn) {
-      delBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        pushUndoSnapshot();
-        state.activeDemo.steps = state.activeDemo.steps.filter(s => s.id !== step.id);
-        if (state.selectedStepId === step.id) {
-          state.selectedStepId = state.activeDemo.steps[Math.max(0, idx - 1)]?.id || null;
-        }
-        setupEditorVideoSource();
-        renderEditorStepsList();
-        renderInspectorPanel();
-        renderTimelineMarkers();
-        renderHotspotOverlay();
-        scheduleAutoSave();
-        refreshIcons();
-      });
-    }
-
     card.addEventListener('click', () => {
       state.selectedStepId = step.id;
       mediaPause();
@@ -1696,13 +1671,6 @@ function renderEditorStepsList() {
       refreshIcons();
     });
     listEl.appendChild(card);
-
-    const insertBtn = document.createElement('button');
-    insertBtn.type = 'button';
-    insertBtn.className = 'step-insert-btn';
-    insertBtn.innerHTML = `<i data-lucide="plus"></i><span>Add Step</span>`;
-    insertBtn.addEventListener('click', () => insertBlankStepAfter(idx));
-    listEl.appendChild(insertBtn);
   });
 }
 
