@@ -1635,6 +1635,42 @@ svg.lucide {
   left: 10px;
 }
 
+/* Edge alignment overrides for tooltips anchored to a Button Trace box
+   (higher specificity so top/bottom are never both set, which clipped the card) */
+.hotspot-anchor.is-trace-anchor > .hotspot-tooltip.place-right.edge-bottom,
+.hotspot-anchor.is-trace-anchor > .hotspot-tooltip.place-left.edge-bottom {
+  top: auto;
+  bottom: -14px;
+  transform: none;
+}
+
+.hotspot-anchor.is-trace-anchor > .hotspot-tooltip.place-right.edge-top,
+.hotspot-anchor.is-trace-anchor > .hotspot-tooltip.place-left.edge-top {
+  top: -14px;
+  bottom: auto;
+  transform: none;
+}
+
+.hotspot-anchor.is-trace-anchor > .hotspot-tooltip.place-top.edge-right,
+.hotspot-anchor.is-trace-anchor > .hotspot-tooltip.place-bottom.edge-right {
+  left: auto;
+  right: -14px;
+  transform: none;
+}
+
+.hotspot-anchor.is-trace-anchor > .hotspot-tooltip.place-top.edge-left,
+.hotspot-anchor.is-trace-anchor > .hotspot-tooltip.place-bottom.edge-left {
+  left: -14px;
+  right: auto;
+  transform: none;
+}
+
+/* Never let the card collapse below its content */
+.hotspot-tooltip {
+  height: auto;
+  min-height: min-content;
+}
+
 @keyframes smoothPopIn {
   from {
     opacity: 0;
