@@ -3629,3 +3629,154 @@ svg.lucide {
   cursor: pointer;
   border-radius: 4px;
 }
+
+/* =========================================================
+   CLEAN, AIRY WORKSPACE POLISH (HAIRLINE & FLAT-SURFACE PASS)
+   ========================================================= */
+.topbar {
+  height: 54px;
+  border-bottom: 1px solid #EEF2F6;
+  padding: 0 18px;
+}
+
+.folder-sidebar,
+.steps-sidebar,
+.inspector-sidebar {
+  border-color: #EEF2F6;
+}
+
+.library-content {
+  padding: 28px 34px;
+  gap: 22px;
+}
+
+.library-toolbar {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #EEF2F6;
+}
+
+.folder-title-row h1 {
+  font-size: 22px;
+  letter-spacing: -0.015em;
+}
+
+/* Clean underline tabs for Library filter (All | Walkthroughs | Interactive) */
+.library-type-filter {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  gap: 18px !important;
+  border-bottom: 1px solid transparent;
+}
+
+.library-type-filter .seg-btn {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 6px 2px 8px !important;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-color);
+  border-bottom: 2px solid transparent;
+  transition: color 0.14s, border-color 0.14s;
+}
+
+.library-type-filter .seg-btn:hover {
+  color: var(--heading-color);
+}
+
+.library-type-filter .seg-btn.active {
+  color: var(--primary) !important;
+  font-weight: 600;
+  border-bottom-color: var(--primary);
+}
+
+.search-box input {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  height: 34px;
+}
+
+.demo-card {
+  border: 1px solid #E8EDF3;
+  box-shadow: 0 1px 2px rgba(0, 24, 44, 0.03);
+}
+
+.demo-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 8px 22px rgba(0, 24, 44, 0.06);
+}
+
+/* Editor Grid & Inspector Polish */
+.editor-layout {
+  grid-template-columns: 224px 1fr 286px;
+}
+
+.panel-header {
+  height: 48px;
+  border-bottom: 1px solid #EEF2F6;
+}
+
+.stage-edit-toolbar {
+  height: 42px;
+  border-bottom: 1px solid #EEF2F6;
+}
+
+.inspector-form {
+  padding: 0;
+  gap: 0;
+}
+
+.inspector-section {
+  border: none;
+  border-bottom: 1px solid #EEF2F6;
+  border-radius: 0;
+  background: transparent;
+}
+
+.inspector-section:last-of-type {
+  border-bottom: none;
+}
+
+.inspector-section-title {
+  background: transparent;
+  padding: 12px 14px 8px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted-color);
+}
+
+.inspector-section-body {
+  border-top: none;
+  padding: 4px 14px 16px;
+  gap: 12px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="url"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+  border-color: #E2E8F0;
+  border-radius: 8px;
+  background: #FFFFFF;
+}
+
+.screenshot-inspector-box {
+  background: #F8FAFC;
+  border-color: #E8EDF3;
+  border-radius: 8px;
+}
+
+.steps-list {
+  padding: 12px;
+  gap: 8px;
+}
+
+.step-thumb-card {
+  border-color: #E8EDF3;
+}
