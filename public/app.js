@@ -4907,6 +4907,7 @@ async function encodeSharePayload(demo) {
       id: demo.id,
       t: demo.title || 'Interactive Demo',
       sn: demo.startNodeId || '',
+      hh: demo.hideHotspots ? 1 : 0,
       n: demo.nodes || []
     };
     const jsonBytes = new TextEncoder().encode(JSON.stringify(flowMinimal));
@@ -5005,6 +5006,7 @@ function expandSharePayload(parsed) {
       kind: 'flow',
       title: parsed.t || 'Interactive Demo',
       startNodeId: parsed.sn || '',
+      hideHotspots: Boolean(parsed.hh),
       nodes: parsed.n || [],
       steps: []
     };

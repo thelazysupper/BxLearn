@@ -3907,3 +3907,75 @@ svg.lucide {
 .editor-layout.preview-mode .stage-backdrop-frame.is-split-layout .video-viewport {
   cursor: default;
 }
+
+/* Flow Screen Popover Modal & Hidden Hotspots */
+.flow-screen-popover {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  background: rgba(0, 24, 44, 0.56);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.flow-screen-popover-card {
+  background: var(--bg-surface);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: smoothPopIn 0.18s var(--ease-out);
+}
+
+.flow-screen-popover-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #EEF2F6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.flow-screen-popover-header h3 {
+  font-size: 15px;
+  margin-bottom: 1px;
+}
+
+.flow-screen-popover-body {
+  padding: 18px;
+  background: #07192C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.flow-screen-popover .flow-stage-box {
+  width: auto;
+  height: 70vh;
+  max-width: 80vw;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.flow-preview-hotspot.is-hidden-hs {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.flow-preview-hotspot.is-hidden-hs:hover {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.flow-node-thumb-wrap {
+  cursor: pointer;
+}

@@ -786,7 +786,7 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
             <p>Select or add a screen on the canvas to draw clickable hotspots and connect paths.</p>
           </div>
 
-          <div id="flow-inspector-form" class="inspector-form hidden">
+          <div id="flow-inspector-form" class="inspector-form hidden" style="padding: 14px; gap: 14px;">
             <div class="form-group">
               <label for="flow-node-title-input">Screen Name</label>
               <input id="flow-node-title-input" type="text" placeholder="e.g. Dashboard" />
@@ -810,11 +810,23 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
             </div>
 
             <div class="form-group">
-              <label>Clickable Hotspots <span class="flow-label-hint">(drag on image to draw)</span></label>
-              <div id="flow-stage-box" class="flow-stage-box">
-                <img id="flow-stage-img" class="flow-stage-img hidden" alt="" draggable="false" />
-                <div id="flow-stage-empty" class="flow-stage-empty">Upload or pick a screenshot</div>
-                <div id="flow-hotspot-draw-layer" class="flow-hotspot-draw-layer"></div>
+              <button type="button" id="btn-flow-open-popover" class="btn btn-sm btn-primary" style="width:100%; justify-content:center;">
+                <i data-lucide="scan-line"></i>
+                <span>Edit Screen &amp; Hotspots</span>
+              </button>
+            </div>
+
+            <div class="form-group">
+              <label>Hotspots in Preview</label>
+              <div class="type-pill-group" id="flow-hotspots-vis-switcher">
+                <button type="button" class="type-pill-btn active" data-flow-hs-vis="visible">
+                  <i data-lucide="eye"></i>
+                  <span>Visible</span>
+                </button>
+                <button type="button" class="type-pill-btn" data-flow-hs-vis="hidden">
+                  <i data-lucide="eye-off"></i>
+                  <span>Hidden</span>
+                </button>
               </div>
             </div>
 
@@ -840,6 +852,26 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
             </div>
           </div>
         </aside>
+      </div>
+
+      <!-- Screen & Hotspot Popover Modal -->
+      <div id="flow-screen-popover" class="flow-screen-popover hidden">
+        <div class="flow-screen-popover-card">
+          <div class="flow-screen-popover-header">
+            <div>
+              <h3 id="flow-popover-title">Screen</h3>
+              <span class="flow-label-hint">Drag on the screenshot to draw clickable hotspots</span>
+            </div>
+            <button type="button" id="btn-close-flow-popover" class="btn btn-xs btn-primary">Done</button>
+          </div>
+          <div class="flow-screen-popover-body">
+            <div id="flow-stage-box" class="flow-stage-box">
+              <img id="flow-stage-img" class="flow-stage-img hidden" alt="" draggable="false" />
+              <div id="flow-stage-empty" class="flow-stage-empty">Upload or pick a screenshot</div>
+              <div id="flow-hotspot-draw-layer" class="flow-hotspot-draw-layer"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Branching Interactive Preview Player -->

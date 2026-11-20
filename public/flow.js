@@ -197,6 +197,15 @@ function renderFlowCanvas() {
       renderFlowInspector();
     });
 
+    el.querySelector('.flow-node-thumb-wrap')?.addEventListener('click', e => {
+      e.stopPropagation();
+      openFlowScreenPopover(node.id);
+    });
+    el.addEventListener('dblclick', e => {
+      if (e.target.closest('.flow-port-out') || e.target.closest('.flow-hs-del-btn')) return;
+      openFlowScreenPopover(node.id);
+    });
+
     el.querySelectorAll('.flow-hs-del-btn').forEach(delBtn => {
       delBtn.addEventListener('click', e => {
         e.stopPropagation();
@@ -294,6 +303,16 @@ function renderFlowConnectors(draftEnd = null) {
   }
 }
 
+function openFlowScreenPopover(nodeId) {
+  if (nodeId) flowState.selectedNodeId = nodeId;
+  renderFlowInspector();
+  document.getElementById('flow-screen-popover')?.classList.remove('hidden');
+}
+
+function closeFlowScreenPopover() {
+  document.getElementById('flow-screen-popover')?.classList.add('hidden');
+}
+
 function deleteFlowHotspot(nodeId, hotspotId) {
   if (!state.activeDemo || !hotspotId) return;
   const node = (state.activeDemo.nodes || []).find(n => n.id === nodeId) || getSelectedFlowNode();
@@ -332,6 +351,13 @@ function renderFlowInspector() {
   startBadge?.classList.toggle('hidden', !isStart);
 
   document.getElementById('flow-node-title-input').value = node.title || '';
+  const popoverTitle = document.getElementById('flow-popover-title');
+  if (popoverTitle) popoverTitle.textContent = node.title || 'Screen';
+
+  const hideHs = Boolean(state.activeDemo?.hideHotspots);
+  document.querySelectorAll('#flow-hotspots-vis-switcher .type-pill-btn').forEach(btn => {
+    btn.classList.toggle('active', (btn.dataset.flowHsVis === 'hidden') === hideHs);
+  });
 
   const stageBox = document.getElementById('flow-stage-box');
   const stageImg = document.getElementById('flow-stage-img');
@@ -522,10 +548,11 @@ function renderFlowPreview() {
   img.classList.toggle('hidden', !node.imageUrl);
   syncFlowPreviewSize();
 
+  const hideHs = Boolean(state.activeDemo?.hideHotspots);
   hsLayer.innerHTML = '';
   (node.hotspots || []).forEach(hs => {
     const btn = document.createElement('div');
-    btn.className = 'flow-preview-hotspot';
+    btn.className = `flow-preview-hotspot ${hideHs ? 'is-hidden-hs' : ''}`;
     btn.style.left = `${hs.x}%`;
     btn.style.top = `${hs.y}%`;
     btn.style.width = `${hs.w}%`;
@@ -553,6 +580,7 @@ function generateFlowWebflowSnippet(demo) {
     id: demo.id,
     title: demo.title,
     startNodeId: demo.startNodeId || demo.nodes?.[0]?.id || '',
+    hideHotspots: Boolean(demo.hideHotspots),
     nodes: demo.nodes || []
   });
 
@@ -572,8 +600,8 @@ function generateFlowWebflowSnippet(demo) {
       #${widgetId} .bf-stage { position:relative; aspect-ratio:16/9; width:100%; background:radial-gradient(circle at 50% 18%, #0B2B4C 0%, #00182C 100%); display:flex; align-items:center; justify-content:center; overflow:hidden; }
       #${widgetId} .bf-inner { position:relative; border-radius:12px; overflow:hidden; box-shadow:0 16px 40px rgba(0,10,22,0.42), 0 0 0 1px rgba(255,255,255,0.14); }
       #${widgetId} .bf-img { width:100%; height:100%; display:block; object-fit:fill; }
-      #${widgetId} .bf-hs { position:absolute; border:2px solid rgba(0,118,221,0.85); background:rgba(0,118,221,0.14); border-radius:7px; cursor:pointer; box-shadow:0 0 0 4px rgba(0,118,221,0.18); transition:background 0.15s; }
-      #${widgetId} .bf-hs:hover { background:rgba(0,118,221,0.28); }
+      #${widgetId} .bf-hs { position:absolute; border:2px solid \${flow.hideHotspots ? 'transparent' : 'rgba(0,118,221,0.85)'}; background:\${flow.hideHotspots ? 'transparent' : 'rgba(0,118,221,0.14)'}; border-radius:7px; cursor:pointer; box-shadow:\${flow.hideHotspots ? 'none' : '0 0 0 4px rgba(0,118,221,0.18)'}; transition:background 0.15s; }
+      #${widgetId} .bf-hs:hover { background:\${flow.hideHotspots ? 'transparent' : 'rgba(0,118,221,0.28)'}; }
       #${widgetId} .bf-bar { background:#FFF; border-top:1px solid #E2E8F0; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; }
       #${widgetId} .bf-btn { background:#F1F5F9; color:#00182C; border:1px solid #CBD5E1; border-radius:7px; padding:5px 11px; font-size:12px; font-weight:600; cursor:pointer; }
     </style>
@@ -727,6 +755,19 @@ function bindFlowEvents() {
 
   document.getElementById('btn-flow-wf-assets')?.addEventListener('click', () => openWebflowAssetsModal('flow-add'));
   document.getElementById('btn-flow-node-wf-assets')?.addEventListener('click', () => openWebflowAssetsModal('flow-replace'));
+  document.getElementById('btn-flow-open-popover')?.addEventListener('click', () => openFlowScreenPopover(flowState.selectedNodeId));
+  document.getElementById('btn-close-flow-popover')?.addEventListener('click', closeFlowScreenPopover);
+  document.getElementById('flow-screen-popover')?.addEventListener('click', e => {
+    if (e.target.id === 'flow-screen-popover') closeFlowScreenPopover();
+  });
+  document.querySelectorAll('#flow-hotspots-vis-switcher .type-pill-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!state.activeDemo) return;
+      state.activeDemo.hideHotspots = btn.dataset.flowHsVis === 'hidden';
+      renderFlowInspector();
+      scheduleAutoSave();
+    });
+  });
 
   // Inspector controls
   document.getElementById('flow-node-title-input')?.addEventListener('input', e => {
