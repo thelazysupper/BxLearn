@@ -14,6 +14,7 @@ const state = {
   demos: [],
   currentView: 'library', // 'library' | 'editor'
   selectedFolder: '__ALL__', // '__ALL__' | '' (root) | 'Folder/Path'
+  libraryTypeFilter: '__ALL__', // '__ALL__' | 'walkthrough' | 'flow'
   searchQuery: '',
 
   // Editor state
@@ -1037,6 +1038,9 @@ function renderLibraryView() {
 
   const query = state.searchQuery.trim().toLowerCase();
   const filteredDemos = state.demos.filter(demo => {
+    const isFlow = demo.kind === 'flow';
+    if (state.libraryTypeFilter === 'flow' && !isFlow) return false;
+    if (state.libraryTypeFilter === 'walkthrough' && isFlow) return false;
     if (query) {
       const hay = `${demo.title} ${demo.description || ''} ${demo.folderPath || ''}`.toLowerCase();
       if (!hay.includes(query)) return false;
@@ -1075,11 +1079,19 @@ function renderLibraryView() {
       const itemLabel = isFlow ? (itemCount === 1 ? 'screen' : 'screens') : (itemCount === 1 ? 'step' : 'steps');
       card.innerHTML = `
         <div class="demo-card-preview" data-action="open">
-          <div class="demo-card-preview-mock">
-            <div class="mock-dots"><span></span><span></span><span></span></div>
-            <div class="mock-bars"><div></div><div></div></div>
-            <div class="mock-hotspot-dot" style="left:${firstHotspot.x || 50}%; top:${firstHotspot.y || 50}%;"></div>
-          </div>
+          ${isFlow ? `
+            <div class="flow-preview-mock">
+              <div class="flow-mock-node"><span></span><span></span></div>
+              <div class="flow-mock-arrow"></div>
+              <div class="flow-mock-node"><span></span><span></span></div>
+            </div>
+          ` : `
+            <div class="demo-card-preview-mock">
+              <div class="mock-dots"><span></span><span></span><span></span></div>
+              <div class="mock-bars"><div></div><div></div></div>
+              <div class="mock-hotspot-dot" style="left:${firstHotspot.x || 50}%; top:${firstHotspot.y || 50}%;"></div>
+            </div>
+          `}
           <span class="demo-card-steps-pill">${isFlow ? 'Flow • ' : ''}${itemCount} ${itemLabel}</span>
         </div>
         <div class="demo-card-body">
@@ -3092,6 +3104,16 @@ function bindEvents() {
   document.getElementById('search-demos').addEventListener('input', e => {
     state.searchQuery = e.target.value;
     renderLibraryView();
+  });
+
+  document.querySelectorAll('#library-type-filter .seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.libraryTypeFilter = btn.dataset.kindFilter || '__ALL__';
+      document.querySelectorAll('#library-type-filter .seg-btn').forEach(b => {
+        b.classList.toggle('active', b === btn);
+      });
+      renderLibraryView();
+    });
   });
 
   // Folder CRUD buttons

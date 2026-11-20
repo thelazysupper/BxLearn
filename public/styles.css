@@ -3177,3 +3177,116 @@ svg.lucide {
   background: rgba(0, 118, 221, 0.1);
   color: var(--primary);
 }
+
+/* =========================================================
+   UI POLISH: LIBRARY TYPE FILTER & INSPECTOR SECTIONS
+   ========================================================= */
+.library-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.library-type-filter .seg-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.flow-preview-mock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  padding: 14px;
+}
+
+.flow-mock-node {
+  width: 58px;
+  height: 38px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1.5px solid rgba(0, 118, 221, 0.55);
+  box-shadow: 0 4px 10px rgba(0, 24, 44, 0.16);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 6px;
+}
+
+.flow-mock-node span {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: #CBD5E1;
+}
+
+.flow-mock-node span:first-child {
+  width: 70%;
+  background: #0076DD;
+}
+
+.flow-mock-arrow {
+  width: 18px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.7);
+  position: relative;
+}
+
+.flow-mock-arrow::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: -3px;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid rgba(255, 255, 255, 0.85);
+}
+
+.inspector-section {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.inspector-section-title {
+  list-style: none;
+  padding: 8px 10px;
+  background: var(--bg-subtle);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--heading-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.inspector-section-title::-webkit-details-marker {
+  display: none;
+}
+
+.inspector-section-title svg.lucide {
+  width: 13px;
+  height: 13px;
+  color: var(--muted-color);
+  transition: transform 0.15s var(--ease-out);
+}
+
+.inspector-section[open] > .inspector-section-title svg.lucide {
+  transform: rotate(180deg);
+}
+
+.inspector-section-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  border-top: 1px solid var(--border-color);
+}
