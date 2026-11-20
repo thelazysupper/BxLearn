@@ -281,6 +281,10 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
               <i data-lucide="book-open"></i>
               <span>Explainer</span>
             </button>
+            <button type="button" id="btn-stage-zoom-pan" class="stage-tool-btn" title="Toggle Zoom & Pan on current step">
+              <i data-lucide="zoom-in"></i>
+              <span>Zoom &amp; Pan</span>
+            </button>
             <span class="toolbar-v-divider"></span>
             <label for="screenshot-steps-input" class="stage-tool-btn" title="Upload Screenshot(s)">
               <i data-lucide="upload"></i>
@@ -604,13 +608,24 @@ const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
                 </div>
               </div>
 
-              <div class="form-group">
-                <label for="step-radius-select">Border Radius</label>
-                <select id="step-radius-select">
-                  <option value="round">Rounded (12px)</option>
-                  <option value="sharp">Sharp (4px)</option>
-                  <option value="pill">Soft (20px)</option>
-                </select>
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="step-radius-select">Border Radius</label>
+                  <select id="step-radius-select">
+                    <option value="round">Rounded (12px)</option>
+                    <option value="sharp">Sharp (4px)</option>
+                    <option value="pill">Soft (20px)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="step-zoom-select">Zoom &amp; Pan</label>
+                  <select id="step-zoom-select">
+                    <option value="1">Off (1x)</option>
+                    <option value="1.35">Subtle (1.35x)</option>
+                    <option value="1.75">Medium (1.75x)</option>
+                    <option value="2.2">Close (2.2x)</option>
+                  </select>
+                </div>
               </div>
 
               <div id="hotspot-advance-group" class="form-group checkbox-group">

@@ -1802,6 +1802,11 @@ function renderInspectorPanel() {
   if (txtHex) txtHex.textContent = textColor;
   const radSel = document.getElementById('step-radius-select');
   if (radSel) radSel.value = step.cardRadius || 'round';
+  const zoomVal = Number(step.zoom || 1);
+  const zoomSel = document.getElementById('step-zoom-select');
+  if (zoomSel) zoomSel.value = String(zoomVal > 1 ? zoomVal : 1);
+  const zoomToolbarBtn = document.getElementById('btn-stage-zoom-pan');
+  if (zoomToolbarBtn) zoomToolbarBtn.classList.toggle('active', zoomVal > 1);
   const showTip = step.showTooltip !== false;
   const showTipEl = document.getElementById('step-show-tooltip');
   if (showTipEl) showTipEl.checked = showTip;
@@ -1893,6 +1898,28 @@ function resolvePlacementClass(step) {
   return classes.join(' ');
 }
 
+function getStepZoomTransform(step) {
+  if (!step) return { z: 1, zx: 50, zy: 50 };
+  const stepType = getStepType(step);
+  if (stepType === 'screen' && step.screenLayout !== 'image') {
+    return { z: 1, zx: 50, zy: 50 };
+  }
+  const z = Math.max(1, Math.min(3, Number(step.zoom || 1)));
+  const zx = Math.max(0, Math.min(100, Number(step.zoomX !== undefined ? step.zoomX : (step.x ?? 50))));
+  const zy = Math.max(0, Math.min(100, Number(step.zoomY !== undefined ? step.zoomY : (step.y ?? 50))));
+  return { z, zx, zy };
+}
+
+function applyStageZoomForStep(step) {
+  const { z, zx, zy } = getStepZoomTransform(step);
+  ['demo-video', 'sample-video-canvas', 'demo-step-image'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.transformOrigin = `${zx}% ${zy}%`;
+    el.style.transform = z > 1 ? `scale(${z})` : 'scale(1)';
+  });
+}
+
 let overlayRenderSeq = 0;
 
 function renderHotspotOverlay() {
@@ -1930,6 +1957,7 @@ function renderHotspotOverlay() {
     const step = steps[state.previewStepIndex];
     if (!state.previewWaitingForClick) {
       // Playing video between steps -> ensure video/canvas is visible, not a static screenshot
+      applyStageZoomForStep(null);
       syncStageMediaForStep(null);
       syncViewportSize();
       return;
@@ -1950,6 +1978,8 @@ function renderHotspotOverlay() {
 
 function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
   const stepType = getStepType(step);
+  applyStageZoomForStep(step);
+  const { z, zx, zy } = getStepZoomTransform(step);
   const pos = getNumberedStepPosition(state.activeDemo?.steps, stepIndex);
   const progressPct = pos.total > 0 ? Math.round((pos.number / pos.total) * 100) : 100;
   const isLast = stepIndex === totalSteps - 1;
@@ -2033,11 +2063,13 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
 
   // CASE 1B: EXPLAINER TOOLTIP (Floating tooltip card, not a page, not a numbered step)
   if (stepType === 'explainer') {
+    const adjX = zx + (Number(step.x ?? 50) - zx) * z;
+    const adjY = zy + (Number(step.y ?? 50) - zy) * z;
     const anchor = document.createElement('div');
     anchor.className = 'hotspot-anchor';
     anchor.id = 'active-hotspot-anchor';
-    anchor.style.left = `${step.x}%`;
-    anchor.style.top = `${step.y}%`;
+    anchor.style.left = `${adjX}%`;
+    anchor.style.top = `${adjY}%`;
 
     const tooltip = document.createElement('div');
     tooltip.id = 'active-hotspot-tooltip';
@@ -2095,11 +2127,13 @@ function renderStepOnStage(overlay, step, stepIndex, totalSteps, isPreview) {
   const anchor = document.createElement('div');
   anchor.className = `hotspot-anchor ${isTrace ? 'is-trace-anchor' : ''}`;
   anchor.id = 'active-hotspot-anchor';
-  anchor.style.left = `${step.x}%`;
-  anchor.style.top = `${step.y}%`;
+  const adjX = zx + (Number(step.x ?? 50) - zx) * z;
+  const adjY = zy + (Number(step.y ?? 50) - zy) * z;
+  anchor.style.left = `${adjX}%`;
+  anchor.style.top = `${adjY}%`;
   if (isTrace) {
-    anchor.style.width = `${step.w}%`;
-    anchor.style.height = `${step.h}%`;
+    anchor.style.width = `${Number(step.w || 16) * z}%`;
+    anchor.style.height = `${Number(step.h || 8) * z}%`;
   }
 
   if (isTrace) {
@@ -2650,7 +2684,7 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       #${widgetId} .bx-stage.is-split .bx-media-pane { border-right:1px solid rgba(255,255,255,0.1); }
       #${widgetId} .bx-screen-inner { position:relative; width:100%; height:100%; border-radius:12px; box-shadow:0 16px 40px rgba(0,10,22,0.42), 0 0 0 1px rgba(255,255,255,0.14); overflow:visible; }
       #${widgetId} .bx-media-clip { position:absolute; inset:0; border-radius:inherit; overflow:hidden; background:#00101F; }
-      #${widgetId} video, #${widgetId} .bx-img { width:100%; height:100%; display:block; object-fit:fill; }
+      #${widgetId} video, #${widgetId} .bx-img { width:100%; height:100%; display:block; object-fit:fill; transition:transform 0.55s cubic-bezier(0.22,1,0.36,1); will-change:transform; }
       #${widgetId} .bx-overlay { position:absolute; inset:0; pointer-events:none; }
       #${widgetId} .bx-screen-overlay { position:absolute; inset:0; pointer-events:none; z-index:18; }
       #${widgetId} .bx-stage.is-split .bx-screen-overlay { position:relative; inset:auto; width:100%; height:100%; min-width:0; min-height:0; }
@@ -2785,7 +2819,20 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
     function commitStepOverlay() {
       if (seq !== renderSeq) return;
       fitInner();
+      const z = (isScreen && s.screenLayout !== "image") ? 1 : Math.max(1, Math.min(3, Number(s.zoom || 1)));
+      const zx = Math.max(0, Math.min(100, Number(s.x ?? 50)));
+      const zy = Math.max(0, Math.min(100, Number(s.y ?? 50)));
+      [video, img].forEach(m => {
+        if (!m) return;
+        m.style.transformOrigin = zx + "% " + zy + "%";
+        m.style.transform = z > 1 ? ("scale(" + z + ")") : "scale(1)";
+      });
       if (isScreen) {
+        if (s.screenLayout === "image") {
+          img.style.cursor = "pointer";
+          img.onclick = next;
+          return;
+        }
         const scr = document.createElement("div");
         scr.className = "bx-screen";
         scr.innerHTML = \`<div class="bx-screen-card">\${showKicker && s.kicker ? \`<div style="font-size:11px;font-weight:600;color:#0076DD;background:rgba(0,118,221,0.1);padding:4px 12px;border-radius:99px;display:inline-block;margin-bottom:2px;">\${s.kicker}</div>\` : ''}\${showTitle ? \`<h3 style="font-family:'Host Grotesk',sans-serif;color:#00182C;font-size:21px;line-height:1.25;margin:0;">\${s.title}</h3>\` : ''}\${showBody ? \`<p style="font-size:14px;color:#324158;margin:0;max-width:38ch;line-height:1.55;">\${s.body}</p>\` : ''}\${actionsHtml}</div>\`;
@@ -2795,7 +2842,9 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
       }
       const anchor = document.createElement("div");
       anchor.className = "bx-anchor";
-      anchor.style.left = s.x + "%"; anchor.style.top = s.y + "%";
+      const adjX = zx + (Number(s.x ?? 50) - zx) * z;
+      const adjY = zy + (Number(s.y ?? 50) - zy) * z;
+      anchor.style.left = adjX + "%"; anchor.style.top = adjY + "%";
       if (isExplainer) {
         const tip = document.createElement("div");
         tip.className = "bx-tip";
@@ -2808,8 +2857,8 @@ function generateSingleDemoWebflowSnippet(demo, videoOverrideUrl = '') {
         return;
       }
       if (s.style === "trace") {
-        anchor.style.width = (s.w || 16) + "%";
-        anchor.style.height = (s.h || 8) + "%";
+        anchor.style.width = ((s.w || 16) * z) + "%";
+        anchor.style.height = ((s.h || 8) * z) + "%";
         anchor.style.transform = "translate(-50%,-50%)";
         const tr = document.createElement("div");
         tr.className = "bx-trace";
@@ -3815,6 +3864,29 @@ function bindEvents() {
     });
   });
   document.getElementById('btn-stage-wf-assets')?.addEventListener('click', () => openWebflowAssetsModal('append'));
+
+  // Zoom & Pan controls (toolbar toggle + inspector select)
+  document.getElementById('btn-stage-zoom-pan')?.addEventListener('click', () => {
+    const step = getSelectedStep();
+    if (!step) return;
+    pushUndoSnapshot();
+    const curr = Number(step.zoom || 1);
+    step.zoom = curr > 1 ? 1 : 1.75;
+    renderInspectorPanel();
+    renderHotspotOverlay();
+    scheduleAutoSave();
+    showToast(step.zoom > 1 ? `Zoom & Pan: ${step.zoom}x` : 'Zoom & Pan off');
+  });
+
+  document.getElementById('step-zoom-select')?.addEventListener('change', e => {
+    const step = getSelectedStep();
+    if (!step) return;
+    pushUndoSnapshot();
+    step.zoom = Number(e.target.value || 1);
+    renderInspectorPanel();
+    renderHotspotOverlay();
+    scheduleAutoSave();
+  });
 
   // Visual Hotspot Style Cards
   document.querySelectorAll('#step-style-cards .style-card-btn').forEach(btn => {
@@ -4872,6 +4944,7 @@ async function encodeSharePayload(demo) {
     if (st.buttonText) s.bt = st.buttonText;
     if (st.advanceOnHotspotClick === false) s.ah = 0;
     if (st.showTooltip === false) s.stp = 0;
+    if (st.zoom && Number(st.zoom) > 1) s.zm = Number(st.zoom);
     if (st.ctaUrl) s.cu = st.ctaUrl;
     if (st.imageUrl) {
       const compactUrl = st.imageUrl.startsWith('https://cdn.prod.website-files.com/')
@@ -4966,6 +5039,7 @@ function expandSharePayload(parsed) {
         buttonText: s.bt || '',
         advanceOnHotspotClick: s.ah !== 0,
         showTooltip: s.stp !== 0,
+        zoom: s.zm ? Number(s.zm) : 1,
         ctaUrl: s.cu || '',
         imageUrl: s.im !== undefined ? (urls[s.im] || '') : ''
       };
